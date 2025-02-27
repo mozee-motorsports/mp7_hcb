@@ -1,9 +1,9 @@
 /******************************************************************************
- * temperture_sensors.h
+ * temperature_sensors.h
  *
  * Description:	API to interact with temperature sensors to read
  * 				micro-controller core temperature, ambient air temperature, and
- * 				both liquid cooling loops.
+ * 				both liquid cooling loops. (Steinhart-Hart equation)
  *
  * Needed Peripherals: ADC
  *
@@ -12,14 +12,13 @@
  *****************************************************************************/
 
 // include guard
-#ifndef INC_TEMPERTURE_SENSORS_H_
-#define INC_TEMPERTURE_SENSORS_H_
+#ifndef INC_TEMPERATURE_SENSORS_H_
+#define INC_TEMPERATURE_SENSORS_H_
 
 // define this as extern for c++
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*=============================================================================
  |          Includes
@@ -31,32 +30,50 @@ extern "C" {
  |          Defines
  ============================================================================*/
 
-#define MAX_CORE_RAW	(uint16_t)	65535
-#define MIN_CORE_RAW	(uint16_t)	0
-#define MAX_CORE_TEMP	(float)		-40		// C
-#define MIN_CORE_TEMP	(float)		140		// C
+/* Reference voltage */
+#define V_REF	(float)	3.3
 
+/* Core probe defines */
+#define VREFINT_CAL_ADDR	0x1FF1E860
+
+#define MAX_CORE_RAW	(uint16_t)	65535
+#define MIN_CORE_RAW	(uint16_t)	33760
+
+#define MAX_CORE_TEMP	(float)		140		// C
+#define MIN_CORE_TEMP	(float)		-40		// C
+
+/* Ambient probe defines */
 #define MAX_AMBI_RAW	(uint16_t)	65535
 #define MIN_AMBI_RAW	(uint16_t)	0
-#define MAX_AMBI_TEMP	(float)		-40		// C
-#define MIN_AMBI_TEMP	(float)		125		// C
 
+#define MAX_AMBI_TEMP	(float)		125		// C
+#define MIN_AMBI_TEMP	(float)		-40		// C
+
+/* Cooling loop defines */
 #define MAX_LOOP_RAW	(uint16_t)	65535
 #define MIN_LOOP_RAW	(uint16_t)	0
-#define MAX_LOOP_TEMP	(float)
-#define MIN_LOOP_TEMP	(float)
+
+#define MAX_LOOP_TEMP	(float)		120		// C
+#define MIN_LOOP_TEMP	(float)		-40		// C
+
+#define R_FIXED 		(float)		10000.0  // Fixed resistor value in ohms (10K ohms)
+
+// Thermistor characteristics at specific temperatures
+#define R_25C			(float)	10000.0  // Resistance at 25C in ohms
+#define B_COEFFICIENT	(float)	3950.0  // Beta coefficient of the thermistor
 
 /*=============================================================================
  |          Enumerations
  ============================================================================*/
 
-enum tempProbes
+// Enumerations for which probe to read
+typedef enum
 {
 	CORE,
 	AMBIENT,
 	IC_LOOP,
 	TS_LOOP
-};
+}TEMP_PROBES;
 
 /*=============================================================================
  |          typeDefs
@@ -68,7 +85,10 @@ enum tempProbes
  |          Function Prototypes
  ============================================================================*/
 
-float read_temp(tempProbes);
+/**
+ *
+ */
+extern float read_temp(TEMP_PROBES channel);
 
 // end c++ guard
 #ifdef __cplusplus
@@ -76,4 +96,4 @@ float read_temp(tempProbes);
 #endif
 
 // end include guard
-#endif /* INC_TEMPERTURE_SENSORS_H_ */
+#endif /* INC_TEMPERATURE_SENSORS_H_ */
