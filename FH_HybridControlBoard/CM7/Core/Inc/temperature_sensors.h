@@ -25,6 +25,7 @@ extern "C" {
  ============================================================================*/
 
 #include <stdint.h>
+#include <math.h>
 
 /*=============================================================================
  |          Defines
@@ -36,21 +37,21 @@ extern "C" {
 /* Core probe defines */
 #define VREFINT_CAL_ADDR	0x1FF1E860
 
-#define MAX_CORE_RAW	(uint16_t)	65535
+#define MAX_CORE_RAW	(uint16_t)	UINT16_MAX
 #define MIN_CORE_RAW	(uint16_t)	33760
 
 #define MAX_CORE_TEMP	(float)		140		// C
 #define MIN_CORE_TEMP	(float)		-40		// C
 
 /* Ambient probe defines */
-#define MAX_AMBI_RAW	(uint16_t)	65535
+#define MAX_AMBI_RAW	(uint16_t)	UINT16_MAX
 #define MIN_AMBI_RAW	(uint16_t)	0
 
 #define MAX_AMBI_TEMP	(float)		125		// C
 #define MIN_AMBI_TEMP	(float)		-40		// C
 
 /* Cooling loop defines */
-#define MAX_LOOP_RAW	(uint16_t)	65535
+#define MAX_LOOP_RAW	(uint16_t)	UINT16_MAX
 #define MIN_LOOP_RAW	(uint16_t)	0
 
 #define MAX_LOOP_TEMP	(float)		120		// C

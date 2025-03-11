@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (12.3.rel1)
+# Toolchain: GNU Tools for STM32 (13.3.rel1)
 ################################################################################
 
 ELF_SRCS := 
@@ -27,9 +27,5 @@ Core/Src \
 Core/Startup \
 Core/ThreadSafe \
 Drivers/STM32H7xx_HAL_Driver \
-FATFS/App \
-FATFS/Target \
-Middlewares/Third_Party/FatFs \
-Middlewares/Third_Party/FreeRTOS \
 Utilities \
 
