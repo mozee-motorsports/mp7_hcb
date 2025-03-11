@@ -21,6 +21,8 @@
 #include "cmsis_os.h"
 #include "adc.h"
 #include "fdcan.h"
+#include "i2c.h"
+#include "sdmmc.h"
 #include "usart.h"
 #include "gpio.h"
 #include "resmgr_utility.h"
@@ -131,9 +133,14 @@ Error_Handler();
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_FDCAN1_Init();
   MX_ADC3_Init();
   MX_USART3_UART_Init();
   MX_FDCAN2_Init();
+  MX_I2C1_Init();
+  MX_I2C2_Init();
+  MX_UART4_Init();
+  MX_SDMMC1_SD_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

@@ -58,10 +58,22 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define GPS_UART_TX_Pin GPIO_PIN_0
+#define GPS_UART_TX_GPIO_Port GPIOA
+#define GPS_UART_RX_Pin GPIO_PIN_1
+#define GPS_UART_RX_GPIO_Port GPIOA
+#define Disp_I2C_SCL_Pin GPIO_PIN_10
+#define Disp_I2C_SCL_GPIO_Port GPIOB
+#define Disp_I2C_SDA_Pin GPIO_PIN_11
+#define Disp_I2C_SDA_GPIO_Port GPIOB
 #define VCP_TX_Pin GPIO_PIN_8
 #define VCP_TX_GPIO_Port GPIOD
 #define VCP_RX_Pin GPIO_PIN_9
 #define VCP_RX_GPIO_Port GPIOD
+#define Acc_I2C_SCL_Pin GPIO_PIN_6
+#define Acc_I2C_SCL_GPIO_Port GPIOB
+#define Acc_I2C_SDA_Pin GPIO_PIN_7
+#define Acc_I2C_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

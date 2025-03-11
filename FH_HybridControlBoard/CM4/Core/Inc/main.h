@@ -58,16 +58,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define VCP_TX_Pin GPIO_PIN_8
-#define VCP_TX_GPIO_Port GPIOD
-#define VCP_RX_Pin GPIO_PIN_9
-#define VCP_RX_GPIO_Port GPIOD
-#define GPS_TX_Pin GPIO_PIN_9
-#define GPS_TX_GPIO_Port GPIOA
-#define GPS_RX_Pin GPIO_PIN_10
-#define GPS_RX_GPIO_Port GPIOA
-#define Detect_SDIO_Pin GPIO_PIN_3
-#define Detect_SDIO_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 
