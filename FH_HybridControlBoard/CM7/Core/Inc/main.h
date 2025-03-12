@@ -60,10 +60,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define Wheel_Speed_Pin GPIO_PIN_5
 #define Wheel_Speed_GPIO_Port GPIOE
-#define Clutch_Sensor_Pin GPIO_PIN_0
-#define Clutch_Sensor_GPIO_Port GPIOC
-#define Brake_Sensor_Pin GPIO_PIN_1
-#define Brake_Sensor_GPIO_Port GPIOC
 #define GPS_UART_TX_Pin GPIO_PIN_0
 #define GPS_UART_TX_GPIO_Port GPIOA
 #define GPS_UART_RX_Pin GPIO_PIN_1

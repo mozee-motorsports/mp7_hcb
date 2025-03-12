@@ -61,13 +61,6 @@ const osThreadAttr_t CANInterface_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for HybridControlAl */
-osThreadId_t HybridControlAlHandle;
-const osThreadAttr_t HybridControlAl_attributes = {
-  .name = "HybridControlAl",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
-};
 /* Definitions for VCOM */
 osThreadId_t VCOMHandle;
 const osThreadAttr_t VCOM_attributes = {
@@ -83,7 +76,6 @@ const osThreadAttr_t VCOM_attributes = {
 
 void StartDefaultTask(void *argument);
 void StartTaskCANI(void *argument);
-void StartTaskHCA(void *argument);
 void StartTaskVCOM(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -138,9 +130,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of CANInterface */
   CANInterfaceHandle = osThreadNew(StartTaskCANI, NULL, &CANInterface_attributes);
 
-  /* creation of HybridControlAl */
-  HybridControlAlHandle = osThreadNew(StartTaskHCA, NULL, &HybridControlAl_attributes);
-
   /* creation of VCOM */
   VCOMHandle = osThreadNew(StartTaskVCOM, NULL, &VCOM_attributes);
 
@@ -188,24 +177,6 @@ void StartTaskCANI(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartTaskCANI */
-}
-
-/* USER CODE BEGIN Header_StartTaskHCA */
-/**
-* @brief Function implementing the HybridControlAl thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTaskHCA */
-void StartTaskHCA(void *argument)
-{
-  /* USER CODE BEGIN StartTaskHCA */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartTaskHCA */
 }
 
 /* USER CODE BEGIN Header_StartTaskVCOM */

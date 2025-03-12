@@ -30,6 +30,7 @@
 // Function to read the ADC value (mock function, replace with actual ADC reading)
 uint16_t read_adc(TEMP_PROBES probe)
 {
+	uint16_t adcRaw = 0;
 	switch (probe) {
 		case CORE:
 
@@ -46,7 +47,7 @@ uint16_t read_adc(TEMP_PROBES probe)
 		default:
 			break;
 	}
-	return 0;
+	return adcRaw;
 }
 
 // Function to convert ADC value to resistance
@@ -74,11 +75,33 @@ float adc_to_resistance(TEMP_PROBES probe, uint16_t adcValue)
 }
 
 // Function to convert resistance to temperature (Steinhart-Hart equation)
-float resistance_to_temperature(TEMP_PROBES probe, float resistance) {
-    float steinhart;
-    steinhart = resistance / R_25C;  // (R/R_25C)
-    steinhart = log(steinhart);  // ln(R/R_25C)
-    steinhart /= B_COEFFICIENT;  // 1/B * ln(R/R_25C)
+float resistance_to_temperature(TEMP_PROBES probe, float resistance)
+{
+    float steinhart = 0;
+    switch (probe) {
+    	case CORE:
+    		steinhart = resistance / R_25C;  // (R/R_25C)
+    		steinhart = log(steinhart);  // ln(R/R_25C)
+    		steinhart /= B_COEFFICIENT;  // 1/B * ln(R/R_25C)
+    		break;
+    	case AMBIENT:
+    		steinhart = resistance / R_25C;  // (R/R_25C)
+    		steinhart = log(steinhart);  // ln(R/R_25C)
+    		steinhart /= B_COEFFICIENT;  // 1/B * ln(R/R_25C)
+    		break;
+    	case IC_LOOP:
+    		steinhart = resistance / R_25C;  // (R/R_25C)
+    		steinhart = log(steinhart);  // ln(R/R_25C)
+    		steinhart /= B_COEFFICIENT;  // 1/B * ln(R/R_25C)
+    		break;
+    	case TS_LOOP:
+    		steinhart = resistance / R_25C;  // (R/R_25C)
+    		steinhart = log(steinhart);  // ln(R/R_25C)
+    		steinhart /= B_COEFFICIENT;  // 1/B * ln(R/R_25C)
+    		break;
+    	default:
+    		break;
+    }
     steinhart += 1.0 / (25.0 + 273.15);  // + (1/T_25)
     steinhart = 1.0 / steinhart;  // Invert
     steinhart -= 273.15;  // Convert to Celsius
@@ -87,21 +110,22 @@ float resistance_to_temperature(TEMP_PROBES probe, float resistance) {
 
 float get_temperture(TEMP_PROBES probe)
 {
+	float temperature = 0;
 	switch (probe) {
 		case CORE:
-			return resistance_to_temperature(probe, adc_to_resistance(probe, read_adc(probe)));
+			temperature = resistance_to_temperature(CORE, adc_to_resistance(CORE, read_adc(CORE)));
 			break;
 		case AMBIENT:
-			return resistance_to_temperature(probe, adc_to_resistance(probe, read_adc(probe)));
+			temperature = resistance_to_temperature(AMBIENT, adc_to_resistance(AMBIENT, read_adc(AMBIENT)));
 			break;
 		case IC_LOOP:
-			return resistance_to_temperature(probe, adc_to_resistance(probe, read_adc(probe)));
+			temperature = resistance_to_temperature(IC_LOOP, adc_to_resistance(IC_LOOP, read_adc(IC_LOOP)));
 			break;
 		case TS_LOOP:
-			return resistance_to_temperature(probe, adc_to_resistance(probe, read_adc(probe)));
+			temperature = resistance_to_temperature(TS_LOOP, adc_to_resistance(TS_LOOP, read_adc(TS_LOOP)));
 			break;
 		default:
 			break;
 	}
-	return 0;
+	return temperature;
 }
