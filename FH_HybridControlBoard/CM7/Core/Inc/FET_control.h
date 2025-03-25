@@ -39,6 +39,9 @@ extern "C" {
 // Enumerations for which FET to set
 typedef enum
 {
+	Starter,
+	FuelPump,
+	Ignition,
 	FET1,
 	FET2,
 	FET3,

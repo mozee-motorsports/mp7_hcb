@@ -23,19 +23,40 @@ extern "C" {
  |          Includes
  ============================================================================*/
 
-
+#include <stdbool.h>
 
 /*=============================================================================
  |          Defines
  ============================================================================*/
 
-
+#define LED_ON			(bool)	true
+#define LED_OFF			(bool)	false
+#define BUTTON_CLOSED	(bool)	true
+#define BUTTON_OPEN		(bool)	false
 
 /*=============================================================================
  |          Enumerations
  ============================================================================*/
 
+// Enumerations for which LED to set
+typedef enum
+{
+	ReadyToDrive,
+	HC1,
+	HC2,
+	CANError
+}LED;
 
+// Enumerations for which LED to set
+typedef enum
+{
+	Starter,
+	FuelPump,
+	Ignition,
+	ReadyToDrive,
+	HybridControl,
+	UserButton
+}BUTTON;
 
 /*=============================================================================
  |          typeDefs
@@ -47,7 +68,8 @@ extern "C" {
  |          Function Prototypes
  ============================================================================*/
 
-
+int set_led(LED led, bool state);
+bool read_button(BUTTON button);
 
 // end c++ guard
 #ifdef __cplusplus
