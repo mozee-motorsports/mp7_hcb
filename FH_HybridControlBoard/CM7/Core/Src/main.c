@@ -157,18 +157,19 @@ Error_Handler();
   MX_FDCAN2_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-  MX_UART4_Init();
   MX_SDMMC1_SD_Init();
   MX_RNG_Init();
   MX_TIM15_Init();
   MX_RTC_Init();
-  MX_ADC1_Init();
-  MX_ADC2_Init();
   MX_FATFS_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_TIM4_Init();
+  MX_ADC1_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
+  HAL_TIM_IC_Start_IT(&htim15, TIM_CHANNEL_1);
 
   /* USER CODE END 2 */
 

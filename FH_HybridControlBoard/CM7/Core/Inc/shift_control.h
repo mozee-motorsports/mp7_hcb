@@ -41,7 +41,16 @@ extern "C" {
  |          typeDefs
  ============================================================================*/
 
-
+typedef enum
+{
+	NUTRAL,
+	FIRST,
+	SECOND,
+	THIRD,
+	FOURTH,
+	FIFTH,
+	SIXTH
+} GEAR;
 
 /*=============================================================================
  |          Function Prototypes

@@ -215,6 +215,26 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_sdmmc.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/BSP/Components/teseo_liv3f.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/BSP/Components/teseo_liv3f/teseo_liv3f.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/BSP/Components/teseo_liv3f_i2c.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/BSP/Components/teseo_liv3f/teseo_liv3f_i2c.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/BSP/Components/teseo_liv3f_queue.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/BSP/Components/teseo_liv3f/teseo_liv3f_queue.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/BSP/Components/teseo_liv3f_uart.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Drivers/BSP/Components/teseo_liv3f/teseo_liv3f_uart.c</locationURI>
+		</link>
+		<link>
 			<name>Middlewares/Third_Party/FatFs/diskio.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/Third_Party/FatFs/src/diskio.c</locationURI>
@@ -283,6 +303,21 @@
 			<name>Middlewares/Third_Party/FreeRTOS/timers.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/Third_Party/FreeRTOS/Source/timers.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/lib_gnss/Data Exchange/lib_gnss/LibGNSS/gnss_data.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/lib_gnss/LibGNSS/Src/gnss_data.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/lib_gnss/Data Exchange/lib_gnss/LibGNSS/gnss_parser.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/lib_gnss/LibGNSS/Src/gnss_parser.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/lib_gnss/Data Exchange/lib_gnss/LibNMEA/NMEA_parser.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Middlewares/ST/lib_gnss/LibNMEA/Src/NMEA_parser.c</locationURI>
 		</link>
 	</linkedResources>
 	<variableList>

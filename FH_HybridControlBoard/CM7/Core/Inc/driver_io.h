@@ -25,6 +25,8 @@ extern "C" {
 
 #include <stdbool.h>
 
+#include "gpio.h"
+
 /*=============================================================================
  |          Defines
  ============================================================================*/
@@ -41,20 +43,20 @@ extern "C" {
 // Enumerations for which LED to set
 typedef enum
 {
-	ReadyToDrive,
-	HC1,
-	HC2,
-	CANError
+	ReadyToDriveLED,
+	HC1LED,
+	HC2LED,
+	CANErrorLED
 }LED;
 
 // Enumerations for which LED to set
 typedef enum
 {
-	Starter,
-	FuelPump,
-	Ignition,
-	ReadyToDrive,
-	HybridControl,
+	StarterButton,
+	FuelPumpButton,
+	IgnitionButton,
+	ReadyToDriveButton,
+	HybridControlButton,
 	UserButton
 }BUTTON;
 

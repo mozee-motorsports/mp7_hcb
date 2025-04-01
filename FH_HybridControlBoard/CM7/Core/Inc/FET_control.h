@@ -25,6 +25,8 @@ extern "C" {
 
 #include <stdbool.h>
 
+#include "gpio.h"
+
 /*=============================================================================
  |          Defines
  ============================================================================*/
@@ -39,9 +41,9 @@ extern "C" {
 // Enumerations for which FET to set
 typedef enum
 {
-	Starter,
-	FuelPump,
-	Ignition,
+	StarterFET,
+	FuelPumpFET,
+	IgnitionFET,
 	FET1,
 	FET2,
 	FET3,
@@ -58,7 +60,7 @@ typedef enum
  |          Function Prototypes
  ============================================================================*/
 
-int set_fet(FET fet, bool state);
+extern int set_fet(FET fet, bool state);
 
 // end c++ guard
 #ifdef __cplusplus
