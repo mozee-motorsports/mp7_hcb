@@ -25,11 +25,15 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "tim.h"
+
 /*=============================================================================
  |          Defines
  ============================================================================*/
 
+#define PWM_RESOLUTION 100
 
+extern uint32_t GPIO_PWM_VAL[PWM_RESOLUTION];
 
 /*=============================================================================
  |          Enumerations
@@ -37,8 +41,8 @@ extern "C" {
 
 typedef enum
 {
-	FAN1,
-	FAN2
+	FAN1 = TIM_CHANNEL_1,
+	FAN2 = TIM_CHANNEL_2
 } FANS;
 
 /*=============================================================================
@@ -51,7 +55,7 @@ typedef enum
  |          Function Prototypes
  ============================================================================*/
 
-int fan_output(FANS fan, uint8_t percent);
+extern int fan_output(FANS fan, uint8_t percent);
 
 // end c++ guard
 #ifdef __cplusplus

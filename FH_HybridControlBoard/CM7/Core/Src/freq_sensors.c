@@ -23,6 +23,7 @@
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);
 uint16_t read_RPM();
+uint32_t read_wheel_speed();
 
 /*=============================================================================
  |          File Scope Variables
@@ -121,7 +122,7 @@ uint16_t read_RPM()
 	return (uint16_t) RPM_frequency;
 }
 
-uint16_t read_wheel_speed()
+uint32_t read_wheel_speed()
 {
-	return (uint16_t) WS_frequency;
+	return (uint32_t) WS_frequency;
 }

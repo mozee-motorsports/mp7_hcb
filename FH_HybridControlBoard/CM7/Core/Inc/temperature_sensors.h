@@ -27,6 +27,8 @@ extern "C" {
 #include <stdint.h>
 #include <math.h>
 
+#include "adc.h"
+
 /*=============================================================================
  |          Defines
  ============================================================================*/
@@ -35,7 +37,7 @@ extern "C" {
 #define V_REF	(float)	3.3
 
 /* Core probe defines */
-#define VREFINT_CAL_ADDR	0x1FF1E860
+//#define VREFINT_CAL_ADDR	0x1FF1E860
 
 #define MAX_CORE_RAW	(uint16_t)	UINT16_MAX
 #define MIN_CORE_RAW	(uint16_t)	33760

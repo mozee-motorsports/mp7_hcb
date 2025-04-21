@@ -154,9 +154,11 @@ void Error_Handler(void);
 #define Acc_I2C_SDA_GPIO_Port GPIOB
 #define Starter_Out_Pin GPIO_PIN_9
 #define Starter_Out_GPIO_Port GPIOB
+#define User_LED2_Pin GPIO_PIN_1
+#define User_LED2_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
-
+#define STDIO_UART_HANDEL huart3
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

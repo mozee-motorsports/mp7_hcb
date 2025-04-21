@@ -33,16 +33,16 @@ uint16_t read_adc(TEMP_PROBES probe)
 	uint16_t adcRaw = 0;
 	switch (probe) {
 		case CORE:
-
+			adcRaw = ADC_VAL3[5];
 			break;
 		case AMBIENT:
-
+			adcRaw = ADC_VAL2[1];
 			break;
 		case IC_LOOP:
-
+			adcRaw = ADC_VAL3[0];
 			break;
 		case TS_LOOP:
-
+			adcRaw = ADC_VAL3[1];
 			break;
 		default:
 			break;
@@ -53,7 +53,7 @@ uint16_t read_adc(TEMP_PROBES probe)
 // Function to convert ADC value to resistance
 float adc_to_resistance(TEMP_PROBES probe, uint16_t adcValue)
 {
-	float vOut = (adcValue / UINT16_MAX) * V_REF;
+	float vOut = ((float) adcValue / (float) UINT16_MAX) * V_REF;
 	float resistance = 0;
 	switch (probe) {
 		case CORE:
@@ -108,7 +108,7 @@ float resistance_to_temperature(TEMP_PROBES probe, float resistance)
     return steinhart;
 }
 
-float get_temperture(TEMP_PROBES probe)
+float read_temp(TEMP_PROBES probe)
 {
 	float temperature = 0;
 	switch (probe) {

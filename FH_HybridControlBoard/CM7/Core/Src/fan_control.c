@@ -1,48 +1,23 @@
 /******************************************************************************
- * freq_sensors.h
+ * fan_control.c
  *
- * Description:	PWM input from the inductive RPM sensor and wheel speed sensor.
+ * Description:	PWM control for fans on the two cooling
+ * 				loops.
  *
- * Needed Peripherals: TIM (TIC)
+ * Needed Peripherals: TIM
  *
- *  Created on: Feb 9, 2025
+ *  Created on: Apr 11, 2025
  *      Author: nimsgernd
  *****************************************************************************/
-
-// include guard
-#ifndef INC_FREQ_SENSORS_H_
-#define INC_FREQ_SENSORS_H_
-
-// define this as extern for c++
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*=============================================================================
  |          Includes
  ============================================================================*/
 
-#include <stdint.h>
-#include <stdbool.h>
-
-//#include "stm32h7xx_hal_tim.h"
-#include "tim.h"
+#include "fan_control.h"
 
 /*=============================================================================
  |          Defines
- ============================================================================*/
-
-#define TIMCLOCK   200000000
-#define PRESCALAR  200
-
-/*=============================================================================
- |          Enumerations
- ============================================================================*/
-
-
-
-/*=============================================================================
- |          typeDefs
  ============================================================================*/
 
 
@@ -51,14 +26,55 @@ extern "C" {
  |          Function Prototypes
  ============================================================================*/
 
-extern void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);
-extern uint16_t read_RPM();
-extern uint32_t read_wheel_speed();
+int fan_output(FANS fan, uint8_t percent);
 
-// end c++ guard
-#ifdef __cplusplus
+/*=============================================================================
+ |          File Scope Variables
+ ============================================================================*/
+
+
+
+/*=============================================================================
+ |          Function Definitions
+ ============================================================================*/
+
+int fan_output(FANS fan, uint8_t percent)
+{
+	uint8_t pin;
+	switch (fan) {
+		case FAN1:
+			pin = 5;
+			break;
+		case FAN2:
+			pin = 7;
+			break;
+		default:
+			pin = 255;
+			break;
+	}
+
+	if (pin != 255)
+	{
+		for (int i = 0; i < PWM_RESOLUTION; i++)
+		{
+			uint32_t bsrrVal = GPIO_PWM_VAL[i];
+
+			// Set pin bsrr values
+			if (i < percent)
+			{
+				bsrrVal |= (1 << pin);
+				bsrrVal &= ~(1 << (pin + 16));
+			}
+			else
+			{
+				bsrrVal |= (1 << (pin + 16));
+				bsrrVal &= ~(1 << pin);
+			}
+
+			// Set bsrr value
+			GPIO_PWM_VAL[i] = bsrrVal;
+		}
+	}
+
+	return 0;
 }
-#endif
-
-// end include guard
-#endif /* INC_TEMPERTURE_SENSORS_H_ */

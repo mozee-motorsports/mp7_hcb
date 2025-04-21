@@ -176,6 +176,19 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM_D1
+  
+  /* DMA regions for ADCs */
+  .mysection (NOLOAD):
+  {
+    . = ABSOLUTE(0x30000000);
+    *(.adc1_array)
+    . = ABSOLUTE(0x30000040);
+    *(.adc2_array)
+    . = ABSOLUTE(0x30000080);
+    *(.adc3_array)
+    . = ABSOLUTE(0x300000C0);
+    *(.gpio_pwm_array)
+  } >RAM_D2
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :
