@@ -39,6 +39,18 @@ extern "C" {
 
 typedef enum
 {
+	critical 		= (uint8_t) 0,
+	very_high 		= (uint8_t) 1,
+	high 			= (uint8_t) 2,
+	above_normal	= (uint8_t) 3,
+	normal 			= (uint8_t) 4,
+	below_normal 	= (uint8_t) 5,
+	low 			= (uint8_t) 6,
+	very_low 		= (uint8_t) 7
+}PRIORITY;
+
+typedef enum
+{
 	safety_system		= (uint8_t) 0,
 	broadcast			= (uint8_t) 1,
 	ic_throttle_control	= (uint8_t) 2,
@@ -89,9 +101,10 @@ typedef enum
 typedef enum
 {
 	shutdown 				= (uint8_t) 0,
+	status_report_poll		= (uint8_t) 0,
 	status_report 			= (uint8_t) 3,
 	error_report 			= (uint8_t) 1,
-	throttle_percentage 	= (uint8_t) 1,
+	throttle_percentage 	= (uint8_t) 2,
 	shutdown_loop_report	= (uint8_t) 1,
 	vehicle_error_code 		= (uint8_t) 2,
 	set_time 				= (uint8_t) 8,
@@ -121,6 +134,16 @@ typedef struct{
  |          Public Variables
  ============================================================================*/
 
+extern volatile bool can_init_done;
+
+// FDCAN1 Variables
+extern volatile FDCAN_TxHeaderTypeDef tx_header1;
+extern volatile uint8_t tx_data1[8];
+
+// FDCAN2 Variables
+extern volatile FDCAN_TxHeaderTypeDef tx_header2;
+extern volatile uint8_t tx_data2[8];
+
 /* Definitions for fdcan1_queue */
 extern osMessageQueueId_t fdcan1_queueHandle;
 
@@ -131,7 +154,7 @@ extern osMessageQueueId_t fdcan2_queueHandle;
  |          Function Prototypes
  ============================================================================*/
 
-HAL_StatusTypeDef fdcanWrite(FDCAN_HandleTypeDef* hfdcan, volatile FDCAN_TxHeaderTypeDef* tx_header, volatile uint8_t* txData, uint8_t len, MODULE module, DIRECTION direction, uint8_t priority, COMMAND command);
+HAL_StatusTypeDef fdcanWrite(FDCAN_HandleTypeDef* hfdcan, volatile FDCAN_TxHeaderTypeDef* tx_header, volatile uint8_t* txData, uint8_t len, MODULE module, DIRECTION direction, PRIORITY priority, COMMAND command);
 HAL_StatusTypeDef fdcanInit(FDCAN_HandleTypeDef* hfdcan1, FDCAN_HandleTypeDef* hfdcan2);
 HAL_StatusTypeDef fdcanFilterInit(FDCAN_HandleTypeDef* hfdcan1, volatile FDCAN_TxHeaderTypeDef* tx_header1, FDCAN_HandleTypeDef* hfdcan2, volatile FDCAN_TxHeaderTypeDef* tx_header2);
 

@@ -56,6 +56,9 @@ float coreTemp = 0.0;
 float ambientTemp = 0.0;
 float ICTemp = 0.0;
 float TSTemp = 0.0;
+uint16_t accelerationPedalPos = 0;
+
+volatile bool can_init_done = false;
 
 // FDCAN1 Variables
 volatile FDCAN_TxHeaderTypeDef tx_header1;
@@ -65,31 +68,6 @@ volatile uint8_t tx_data1[8];
 volatile FDCAN_TxHeaderTypeDef tx_header2;
 volatile uint8_t tx_data2[8];
 
-/* Definitions for KeyStats */
-osMessageQueueId_t KeyStatsHandle;
-const osMessageQueueAttr_t KeyStats_attributes = {
-  .name = "KeyStats"
-};
-/* Definitions for UartBuf */
-osMessageQueueId_t UartBufHandle;
-const osMessageQueueAttr_t UartBuf_attributes = {
-  .name = "UartBuf"
-};
-/* Definitions for SemaphoreRx */
-osMessageQueueId_t SemRxDataHandle;
-const osMessageQueueAttr_t SemaphoreRx_attributes = {
-  .name = "SemaphoreRx"
-};
-/* Definitions for fdcan1_queue */
-osMessageQueueId_t fdcan1_queueHandle;
-const osMessageQueueAttr_t fdcan1_queue_attributes = {
-  .name = "fdcan1_queue"
-};
-/* Definitions for fdcan2_queue */
-osMessageQueueId_t fdcan2_queueHandle;
-const osMessageQueueAttr_t fdcan2_queue_attributes = {
-  .name = "fdcan2_queue"
-};
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -98,10 +76,10 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for CANInterface */
-osThreadId_t CANInterfaceHandle;
-const osThreadAttr_t CANInterface_attributes = {
-  .name = "CANInterface",
+/* Definitions for CAN1Read */
+osThreadId_t CAN1ReadHandle;
+const osThreadAttr_t CAN1Read_attributes = {
+  .name = "CAN1Read",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -133,6 +111,81 @@ const osThreadAttr_t ReadSensors_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for CAN2Read */
+osThreadId_t CAN2ReadHandle;
+const osThreadAttr_t CAN2Read_attributes = {
+  .name = "CAN2Read",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for PollPeddalBox */
+osThreadId_t PollPeddalBoxHandle;
+const osThreadAttr_t PollPeddalBox_attributes = {
+  .name = "PollPeddalBox",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for PollThrottleBox */
+osThreadId_t PollThrottleBoxHandle;
+const osThreadAttr_t PollThrottleBox_attributes = {
+  .name = "PollThrottleBox",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for PollShutdownBox */
+osThreadId_t PollShutdownBoxHandle;
+const osThreadAttr_t PollShutdownBox_attributes = {
+  .name = "PollShutdownBox",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for PollWheel */
+osThreadId_t PollWheelHandle;
+const osThreadAttr_t PollWheel_attributes = {
+  .name = "PollWheel",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for KeyStats */
+osMessageQueueId_t KeyStatsHandle;
+const osMessageQueueAttr_t KeyStats_attributes = {
+  .name = "KeyStats"
+};
+/* Definitions for UartBuf */
+osMessageQueueId_t UartBufHandle;
+const osMessageQueueAttr_t UartBuf_attributes = {
+  .name = "UartBuf"
+};
+/* Definitions for SemaphoreRx */
+osMessageQueueId_t SemaphoreRxHandle;
+const osMessageQueueAttr_t SemaphoreRx_attributes = {
+  .name = "SemaphoreRx"
+};
+/* Definitions for fdcan1_queue */
+osMessageQueueId_t fdcan1_queueHandle;
+const osMessageQueueAttr_t fdcan1_queue_attributes = {
+  .name = "fdcan1_queue"
+};
+/* Definitions for fdcan2_queue */
+osMessageQueueId_t fdcan2_queueHandle;
+const osMessageQueueAttr_t fdcan2_queue_attributes = {
+  .name = "fdcan2_queue"
+};
+/* Definitions for CAN1Write */
+osMutexId_t CAN1WriteHandle;
+const osMutexAttr_t CAN1Write_attributes = {
+  .name = "CAN1Write"
+};
+/* Definitions for CAN2Write */
+osMutexId_t CAN2WriteHandle;
+const osMutexAttr_t CAN2Write_attributes = {
+  .name = "CAN2Write"
+};
+/* Definitions for CANRead */
+osMutexId_t CANReadHandle;
+const osMutexAttr_t CANRead_attributes = {
+  .name = "CANRead"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -140,11 +193,16 @@ static void processCANMessage(FDCAN_HandleTypeDef *hfdcan, volatile FDCAN_TxHead
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void StartCANInterface(void *argument);
+void StartCAN1Read(void *argument);
 void StartVCOM(void *argument);
 void StartDashButtons(void *argument);
 void StartFanControl(void *argument);
 void StartReadSensors(void *argument);
+void StartCAN2Read(void *argument);
+void StartPollPeddalBox(void *argument);
+void StartPollThrottleControl(void *argument);
+void StartPollShutdownCircuit(void *argument);
+void StartPollSteeringWheel(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -175,6 +233,15 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of CAN1Write */
+  CAN1WriteHandle = osMutexNew(&CAN1Write_attributes);
+
+  /* creation of CAN2Write */
+  CAN2WriteHandle = osMutexNew(&CAN2Write_attributes);
+
+  /* creation of CANRead */
+  CANReadHandle = osMutexNew(&CANRead_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -188,34 +255,37 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of KeyStats */
+  KeyStatsHandle = osMessageQueueNew (16, sizeof(uint16_t), &KeyStats_attributes);
+
+  /* creation of UartBuf */
+  UartBufHandle = osMessageQueueNew (16, sizeof(uint16_t), &UartBuf_attributes);
+
+  /* creation of SemaphoreRx */
+  SemaphoreRxHandle = osMessageQueueNew (16, sizeof(uint16_t), &SemaphoreRx_attributes);
+
+  /* creation of fdcan1_queue */
+  fdcan1_queueHandle = osMessageQueueNew (50, sizeof(CANMessage), &fdcan1_queue_attributes);
+
+  /* creation of fdcan2_queue */
+  fdcan2_queueHandle = osMessageQueueNew (50, sizeof(CANMessage), &fdcan2_queue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
-	/* creation of KeyStats */
-	  KeyStatsHandle = osMessageQueueNew (16, sizeof(uint16_t), &KeyStats_attributes);
-
-	  /* creation of UartBuf */
-	  UartBufHandle = osMessageQueueNew (16, sizeof(uint16_t), &UartBuf_attributes);
-
-	  /* creation of SemaphoreRx */
-	  SemRxDataHandle = osMessageQueueNew (16, sizeof(uint16_t), &SemaphoreRx_attributes);
-
-	  /* creation of fdcan1_queue */
-	  fdcan1_queueHandle = osMessageQueueNew (50, sizeof(CANMessage), &fdcan1_queue_attributes);
-
-	  /* creation of fdcan2_queue */
-	  fdcan2_queueHandle = osMessageQueueNew (50, sizeof(CANMessage), &fdcan2_queue_attributes);
-
-	vQueueAddToRegistry(KeyStatsHandle, "KeyStats");
-	vQueueAddToRegistry(UartBufHandle, "UartBuf");
-	vQueueAddToRegistry(SemRxDataHandle, "SemaphoreRx");
+  vQueueAddToRegistry(KeyStatsHandle, "KeyStats");
+  vQueueAddToRegistry(UartBufHandle, "UartBuf");
+  vQueueAddToRegistry(SemaphoreRxHandle, "SemaphoreRx");
+  vQueueAddToRegistry(fdcan1_queue_attributes, "fdcan1_queue_attributes");
+  vQueueAddToRegistry(fdcan2_queue_attributes, "fdcan2_queue_attributes");
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of CANInterface */
-  CANInterfaceHandle = osThreadNew(StartCANInterface, NULL, &CANInterface_attributes);
+  /* creation of CAN1Read */
+  CAN1ReadHandle = osThreadNew(StartCAN1Read, NULL, &CAN1Read_attributes);
 
   /* creation of VCOM */
   VCOMHandle = osThreadNew(StartVCOM, NULL, &VCOM_attributes);
@@ -228,6 +298,21 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of ReadSensors */
   ReadSensorsHandle = osThreadNew(StartReadSensors, NULL, &ReadSensors_attributes);
+
+  /* creation of CAN2Read */
+  CAN2ReadHandle = osThreadNew(StartCAN2Read, NULL, &CAN2Read_attributes);
+
+  /* creation of PollPeddalBox */
+  PollPeddalBoxHandle = osThreadNew(StartPollPeddalBox, NULL, &PollPeddalBox_attributes);
+
+  /* creation of PollThrottleBox */
+  PollThrottleBoxHandle = osThreadNew(StartPollThrottleControl, NULL, &PollThrottleBox_attributes);
+
+  /* creation of PollShutdownBox */
+  PollShutdownBoxHandle = osThreadNew(StartPollShutdownCircuit, NULL, &PollShutdownBox_attributes);
+
+  /* creation of PollWheel */
+  PollWheelHandle = osThreadNew(StartPollSteeringWheel, NULL, &PollWheel_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -258,41 +343,17 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_StartCANInterface */
+/* USER CODE BEGIN Header_StartCAN1Read */
 /**
-* @brief Function implementing the CANInterface thread.
+* @brief Function implementing the CAN1Read thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartCANInterface */
-void StartCANInterface(void *argument)
+/* USER CODE END Header_StartCAN1Read */
+void StartCAN1Read(void *argument)
 {
-  /* USER CODE BEGIN StartCANInterface */
-	// Activate the notification for new data in FIFO0 for FDCAN1
-	if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
-	{
-	  /* Notification Error */
-	  Error_Handler();
-	}
-
-	// Activate the notification for new data in FIFO1 for FDCAN2
-	if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
-	{
-	  /* Notification Error */
-	  Error_Handler();
-	}
-
-	if (fdcanFilterInit(&hfdcan1, &tx_header1, &hfdcan2, &tx_header2) != HAL_OK)
-	{
-	  /* Notification Error */
-	  Error_Handler();
-	}
-
-	if (fdcanInit(&hfdcan1, &hfdcan2) != HAL_OK)
-	{
-	  /* Notification Error */
-	  Error_Handler();
-	}
+  /* USER CODE BEGIN StartCAN1Read */
+	while(!can_init_done) vTaskDelay(pdMS_TO_TICKS(5));
 
 	CANMessage msg;
 	/* Infinite loop */
@@ -302,31 +363,19 @@ void StartCANInterface(void *argument)
 		if (osMessageQueueGetCount(fdcan1_queueHandle) > 0)
 		{
 			osStatus_t status = osMessageQueueGet(fdcan1_queueHandle, &msg, NULL, 0U);
-		    // Get current message in queue and remove it. Wait up to 100MS in ticks
-		    if (status == osOK)
-		    {
-		    	MODULE module = (MODULE)((msg.rx_header.Identifier & 0b00011100000) >> 5);
-		    	COMMAND command = (COMMAND)(msg.rx_header.Identifier & 0b00000001111);
-		        processCANMessage(&hfdcan1, &tx_header1, &msg, module, command);
-		    }
+			// Get current message in queue and remove it. Wait up to 100MS in ticks
+			if (status == osOK)
+			{
+				MODULE module = (MODULE)((msg.rx_header.Identifier & 0b00011100000) >> 5);
+			    COMMAND command = (COMMAND)(msg.rx_header.Identifier & 0b00000001111);
+			    osMutexAcquire(CANReadHandle, osWaitForever); // Ensure thread safety when accessing the file scope variables
+			    processCANMessage(&hfdcan1, &tx_header1, &msg, module, command);
+			    osMutexRelease(CANReadHandle); // Release mutex after accessing the file scope variables
+			}
 		}
-
-		// If the queue is not empty
-		if (osMessageQueueGetCount(fdcan2_queueHandle) > 0)
-		{
-			osStatus_t status = osMessageQueueGet(fdcan2_queueHandle, &msg, NULL, 0U);
-		    // Get current message in queue and remove it. Wait up to 100MS in ticks
-		    if (status == osOK)
-		    {
-		    	MODULE module = (MODULE)((msg.rx_header.Identifier & 0b00011100000) >> 5);
-		    	COMMAND command = (COMMAND)(msg.rx_header.Identifier & 0b00000001111);
-		    	processCANMessage(&hfdcan1, &tx_header1, &msg, module, command);
-		    }
-		}
-
 		vTaskDelay(pdMS_TO_TICKS(5));
 	}
-  /* USER CODE END StartCANInterface */
+  /* USER CODE END StartCAN1Read */
 }
 
 /* USER CODE BEGIN Header_StartVCOM */
@@ -528,6 +577,170 @@ void StartReadSensors(void *argument)
   /* USER CODE END StartReadSensors */
 }
 
+/* USER CODE BEGIN Header_StartCAN2Read */
+/**
+* @brief Function implementing the CAN2Read thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCAN2Read */
+void StartCAN2Read(void *argument)
+{
+  /* USER CODE BEGIN StartCAN2Read */
+	while(!can_init_done) vTaskDelay(pdMS_TO_TICKS(5));
+
+	CANMessage msg;
+	/* Infinite loop */
+	for(;;)
+	{
+		// If the queue is not empty
+		if (osMessageQueueGetCount(fdcan2_queueHandle) > 0)
+		{
+			osStatus_t status = osMessageQueueGet(fdcan2_queueHandle, &msg, NULL, 0U);
+			// Get current message in queue and remove it. Wait up to 100MS in ticks
+			if (status == osOK)
+			{
+				MODULE module = (MODULE)((msg.rx_header.Identifier & 0b00011100000) >> 5);
+				COMMAND command = (COMMAND)(msg.rx_header.Identifier & 0b00000001111);
+				osMutexAcquire(CANReadHandle, osWaitForever); // Ensure thread safety when accessing the file scope variables
+				processCANMessage(&hfdcan2, &tx_header2, &msg, module, command);
+				osMutexRelease(CANReadHandle); // Release mutex after accessing the file scope variables
+			}
+		}
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
+  /* USER CODE END StartCAN2Read */
+}
+
+/* USER CODE BEGIN Header_StartPollPeddalBox */
+/**
+* @brief Function implementing the PollPeddalBox thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPollPeddalBox */
+void StartPollPeddalBox(void *argument)
+{
+  /* USER CODE BEGIN StartPollPeddalBox */
+	while(!can_init_done) vTaskDelay(pdMS_TO_TICKS(5));
+	/* Infinite loop */
+	for(;;)
+	{
+		// Poll Status
+//		osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+//		if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, status_report_poll, peddal_box, to, normal, peddal_box_status_report) != HAL_OK)
+//		{
+//			osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//			Error_Handler();
+//		}
+//		osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//
+//		vTaskDelay(pdMS_TO_TICKS(5));
+
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
+  /* USER CODE END StartPollPeddalBox */
+}
+
+/* USER CODE BEGIN Header_StartPollThrottleControl */
+/**
+* @brief Function implementing the PollThrottleBox thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPollThrottleControl */
+void StartPollThrottleControl(void *argument)
+{
+  /* USER CODE BEGIN StartPollThrottleControl */
+  /* Infinite loop */
+  for(;;)
+  {
+	  // Poll Status
+//	  osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+//	  if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, status_report_poll, ic_throttle_control, to, normal, ic_throttle_control_status_report) != HAL_OK)
+//	  {
+//		  osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//		  Error_Handler();
+//	  }
+//	  osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//
+//	  vTaskDelay(pdMS_TO_TICKS(5));
+//
+//	  // Send Throttle Value
+//	  osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+//	  memcpy(tx_data1, &accelerationPedalPos, throttle_percentage);
+//	  if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, throttle_percentage, ic_throttle_control, to, normal, ic_throttle_control_throttle_percent) != HAL_OK)
+//	  {
+//		  osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//	  	  Error_Handler();
+//	  }
+//	  osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//
+//	  vTaskDelay(pdMS_TO_TICKS(5));
+
+	  vTaskDelay(pdMS_TO_TICKS(5));
+  }
+  /* USER CODE END StartPollThrottleControl */
+}
+
+/* USER CODE BEGIN Header_StartPollShutdownCircuit */
+/**
+* @brief Function implementing the PollShutdownBox thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPollShutdownCircuit */
+void StartPollShutdownCircuit(void *argument)
+{
+  /* USER CODE BEGIN StartPollShutdownCircuit */
+	/* Infinite loop */
+	for(;;)
+	{
+		// Poll Status
+//		osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+//		if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, status_report_poll, safety_system, to, normal, safety_system_status_report) != HAL_OK)
+//		{
+//			osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//			Error_Handler();
+//		}
+//		osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//
+//		vTaskDelay(pdMS_TO_TICKS(5));
+
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
+  /* USER CODE END StartPollShutdownCircuit */
+}
+
+/* USER CODE BEGIN Header_StartPollSteeringWheel */
+/**
+* @brief Function implementing the PollWheel thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPollSteeringWheel */
+void StartPollSteeringWheel(void *argument)
+{
+  /* USER CODE BEGIN StartPollSteeringWheel */
+	/* Infinite loop */
+	for(;;)
+	{
+		// Poll Status
+//		osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+//		if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, status_report_poll, safety_system, to, normal, safety_system_status_report) != HAL_OK)
+//		{
+//			osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//			Error_Handler();
+//		}
+//		osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+//
+//		vTaskDelay(pdMS_TO_TICKS(5));
+
+		vTaskDelay(pdMS_TO_TICKS(5));
+	}
+  /* USER CODE END StartPollSteeringWheel */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 static void processCANMessage(FDCAN_HandleTypeDef *hfdcan, volatile FDCAN_TxHeaderTypeDef *tx_header, CANMessage *msg, MODULE module, COMMAND command)
@@ -578,7 +791,10 @@ static void processCANMessage(FDCAN_HandleTypeDef *hfdcan, volatile FDCAN_TxHead
 
 					break;
 				case peddal_box_accelerator_pedal_percent:
-
+					if(msg->rx_header.DataLength == throttle_percentage)
+					{
+						memcpy(&accelerationPedalPos, msg->data, throttle_percentage);
+					}
 					break;
 				default:
 					break;

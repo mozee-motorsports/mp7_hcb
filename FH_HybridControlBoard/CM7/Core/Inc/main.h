@@ -130,8 +130,6 @@ void Error_Handler(void);
 #define FP_Out_GPIO_Port GPIOD
 #define Ignition_Out_Pin GPIO_PIN_6
 #define Ignition_Out_GPIO_Port GPIOG
-#define Detect_SDIO_Pin GPIO_PIN_10
-#define Detect_SDIO_GPIO_Port GPIOA
 #define FET4_Pin GPIO_PIN_4
 #define FET4_GPIO_Port GPIOD
 #define FAN1_Pin GPIO_PIN_5

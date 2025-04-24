@@ -22,12 +22,10 @@
 #include "adc.h"
 #include "crc.h"
 #include "dma.h"
-#include "fatfs.h"
 #include "fdcan.h"
 #include "i2c.h"
 #include "rng.h"
 #include "rtc.h"
-#include "sdmmc.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -35,8 +33,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+
 #include "stdio_uart_driver.h"
 #include "fan_control.h"
+#include "can_bus.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,6 +66,16 @@ __attribute__((section(".adc1_array"))) uint16_t ADC_VAL1[4] = {0, 0, 0, 0};
 __attribute__((section(".adc2_array"))) uint16_t ADC_VAL2[2] = {0, 0};
 __attribute__((section(".adc3_array"))) uint16_t ADC_VAL3[6] = {0, 0, 0, 0, 0, 0};
 __attribute__((section(".gpio_pwm_array"))) uint32_t GPIO_PWM_VAL[PWM_RESOLUTION] = {0};
+
+
+// FDCAN1 Variables
+volatile FDCAN_RxHeaderTypeDef rx_header1;
+volatile uint8_t rx_data1[8];
+
+// FDCAN2 Variables
+volatile FDCAN_RxHeaderTypeDef rx_header2;
+volatile uint8_t rx_data2[8];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -162,11 +173,9 @@ Error_Handler();
   MX_FDCAN2_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-//  MX_SDMMC1_SD_Init();
   MX_RNG_Init();
   MX_TIM15_Init();
   MX_RTC_Init();
-  MX_FATFS_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_ADC1_Init();
@@ -199,6 +208,34 @@ Error_Handler();
   // Initial conditions for fans, fail safe if tasks don't start
   fan_output(FAN1, 50);
   fan_output(FAN2, 50);
+
+//  // Activate the notification for new data in FIFO0 for FDCAN1
+//  if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
+//  {
+//	  /* Notification Error */
+//	  Error_Handler();
+//  }
+//
+//  // Activate the notification for new data in FIFO1 for FDCAN2
+//  if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
+//  {
+//	  /* Notification Error */
+//	  Error_Handler();
+//  }
+
+  if (fdcanFilterInit(&hfdcan1, &tx_header1, &hfdcan2, &tx_header2) != HAL_OK)
+  {
+	  /* Notification Error */
+	  Error_Handler();
+  }
+
+  if (fdcanInit(&hfdcan1, &hfdcan2) != HAL_OK)
+  {
+	  /* Notification Error */
+	  Error_Handler();
+  }
+
+  can_init_done = true;
 
   /* USER CODE END 2 */
 
@@ -312,7 +349,101 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+ * CAN Rx FIFO0 call back
+ */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+{
+	if (!can_init_done)
+		return;
 
+	if (hfdcan->Instance == FDCAN1)
+	{
+		// If we are receiving a CAN signal and its NOT in reset, then get message
+		if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET)
+	    {
+			// Get Rx messages from RX FIFO0
+			if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header1, rx_data1) != HAL_OK)
+			{
+//				Error error = {fdcan_rx_failure, getErrorPriority(fdcan_rx_failure), false, false, false, HAL_GetTick(), false};
+//				addErrorFromISR(error, internal_error_queueHandle);
+			}
+
+			// Activate notification again in case HAL deactivates interrupt
+			if (HAL_FDCAN_ActivateNotification(hfdcan, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK)
+			{
+//				Error error = {fdcan_rx_failure, getErrorPriority(fdcan_rx_failure), false, false, false, HAL_GetTick(), false};
+//				addErrorFromISR(error, internal_error_queueHandle);
+			}
+
+			// Extract command
+//			COMMAND command = (COMMAND)(rx_header1.Identifier & 0x0F);
+
+			// Queue non-critical commands
+			CANMessage msg = {rx_header1, {0}};
+
+			// Make deep copy of payload
+			memcpy(msg.data, rx_data1, 8);
+
+			// ISR-safe queue put with timeout = 0
+			osStatus_t status = osMessageQueuePut(fdcan1_queueHandle, &msg, 0, 0);		// Timeout must be 0 to be ISR safe
+			if (status != osOK)
+			{
+//				Error error = {fdcan_tx_failure, getErrorPriority(fdcan_tx_failure), false, false, false, HAL_GetTick(), false};
+//				addErrorFromISR(error, internal_error_queueHandle);
+			}
+	    }
+	}
+}
+
+/**
+ * CAN Rx FIFO1 call back
+ */
+void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
+{
+	if (!can_init_done)
+		return;
+
+	if (hfdcan->Instance == FDCAN2)
+	{
+		// If we are receiving a CAN signal and its NOT in reset, then get message
+	    if ((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != RESET)
+	    {
+	    	// Get Rx messages from RX FIFO1
+	    	if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO1, &rx_header2, rx_data2) != HAL_OK)
+	    	{
+//	    		Error error = {fdcan_rx_failure, getErrorPriority(fdcan_rx_failure), false, false, false, HAL_GetTick(), false};
+//	    		addErrorFromISR(error, internal_error_queueHandle);
+	    	}
+
+	    	// Activate notification again in case HAL deactivates interrupt
+	    	if (HAL_FDCAN_ActivateNotification(hfdcan, FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK)
+	    	{
+//	    		Error error = {fdcan_rx_failure, getErrorPriority(fdcan_rx_failure), false, false, false, HAL_GetTick(), false};
+//	    		addErrorFromISR(error, internal_error_queueHandle);
+
+	    	}
+	    	// Extract command
+	    	//      Command command = (Command)(rx_header2.Identifier & 0x0F);
+
+	    	// Queue non-critical commands
+	    	CANMessage msg = {rx_header2, {0}};
+
+	    	// Make deep copy of payload
+	    	memcpy(msg.data, rx_data2, 8);
+
+	    	// Add to queue
+	    	// ISR-safe queue put with timeout = 0
+	    	osStatus_t status = osMessageQueuePut(fdcan2_queueHandle, &msg, 0, 0);		// Timeout must be 0 to be ISR safe
+	    	if (status != osOK)
+	    	{
+	    		// Handle queue full or error (optional)
+//	    		Error error = {fdcan_tx_failure, getErrorPriority(fdcan_tx_failure), false, false, false, HAL_GetTick(), false};
+//	    		addError(error, internal_error_queueHandle, mutex_internal_errorHandle);
+	    	}
+	    }
+	}
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
