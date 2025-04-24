@@ -62,11 +62,11 @@ volatile bool can_init_done = false;
 
 // FDCAN1 Variables
 volatile FDCAN_TxHeaderTypeDef tx_header1;
-volatile uint8_t tx_data1[8];
+volatile uint8_t tx_data1[8] = {0};
 
 // FDCAN2 Variables
 volatile FDCAN_TxHeaderTypeDef tx_header2;
-volatile uint8_t tx_data2[8];
+volatile uint8_t tx_data2[8] = {0};
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -623,19 +623,22 @@ void StartPollPeddalBox(void *argument)
 {
   /* USER CODE BEGIN StartPollPeddalBox */
 	while(!can_init_done) vTaskDelay(pdMS_TO_TICKS(5));
+
+	tx_data1[0] = 0xFF;
+	tx_data1[1] = 0xFF;
 	/* Infinite loop */
 	for(;;)
 	{
 		// Poll Status
-//		osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
-//		if (fdcanWrite(&hfdcan1, &tx_header1, &tx_data1, status_report_poll, peddal_box, to, normal, peddal_box_status_report) != HAL_OK)
-//		{
-//			osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
-//			Error_Handler();
-//		}
-//		osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
-//
-//		vTaskDelay(pdMS_TO_TICKS(5));
+		osMutexAcquire(CAN1WriteHandle, osWaitForever); // Ensure thread safety when accessing the CAN peripherals
+		if (fdcanWrite(&hfdcan1, &tx_header1, tx_data1, throttle_percentage, peddal_box, from, critical, peddal_box_accelerator_pedal_percent) != HAL_OK)
+		{
+			osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+			Error_Handler();
+		}
+		osMutexRelease(CAN1WriteHandle); // Release mutex after accessing the CAN peripherals
+
+		vTaskDelay(pdMS_TO_TICKS(5));
 
 		vTaskDelay(pdMS_TO_TICKS(5));
 	}
@@ -785,9 +788,6 @@ static void processCANMessage(FDCAN_HandleTypeDef *hfdcan, volatile FDCAN_TxHead
 
 					break;
 				case peddal_box_error_report:
-
-					break;
-				case peddal_box_accelerometer_data:
 
 					break;
 				case peddal_box_accelerator_pedal_percent:
