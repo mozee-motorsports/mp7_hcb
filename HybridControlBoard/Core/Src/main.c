@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "mp7_fdcan.h"
 
 /* USER CODE END Includes */
 
@@ -32,6 +33,37 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+/*************************/
+// CAN IDs
+/*************************/
+
+// Hybrid Control Board IDs
+#define HCB_EMOTOR_TORQUE_CMD_ID  0x201
+#define HCB_ICE_THROTTLE_PER_ID   0x202
+
+// Inverter IDs (offset of 0x14E)
+#define INVERTER_ID_RANGE_START 0x1EF
+#define INVERTER_ID_RANGE_STOP  0x1FF
+
+// Pedal Box Board IDs
+#define PBB_THROTTLE_POSITION_ID  0x200
+
+
+/*************************/
+// RTOS Event Flags
+/*************************/
+#define HCB_HIGH_PRIORITY_MESSAGE_FLAG  0x00000001
+#define HCB_LOW_PRIORITY_MESSAGE_FLAG   0x00000002
+
+#define HCB_THROTTLE_RECEIVED_FLAG      0x00000001
+
+/*************************/
+// Other
+/*************************/
+// Send throttle every 50 milliseconds
+#define HCB_THROTTLE_SEND_TIME   (uint32_t)50
+// Throttle Position Data Length
+#define HCB_THROTTLE_MESSAGE_DLC  (uint8_t)2
 
 /* USER CODE END PD */
 
@@ -42,6 +74,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+FDCAN_HandleTypeDef hfdcan1;
+
 /* Definitions for blinkLED */
 osThreadId_t blinkLEDHandle;
 const osThreadAttr_t blinkLED_attributes = {
@@ -49,7 +83,45 @@ const osThreadAttr_t blinkLED_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for highPrtyMessage */
+osThreadId_t highPrtyMessageHandle;
+const osThreadAttr_t highPrtyMessage_attributes = {
+  .name = "highPrtyMessage",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for lowPrtyMessage */
+osThreadId_t lowPrtyMessageHandle;
+const osThreadAttr_t lowPrtyMessage_attributes = {
+  .name = "lowPrtyMessage",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for handleThrottle */
+osThreadId_t handleThrottleHandle;
+const osThreadAttr_t handleThrottle_attributes = {
+  .name = "handleThrottle",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for mutexFdcanHandle */
+osMutexId_t mutexFdcanHandleHandle;
+const osMutexAttr_t mutexFdcanHandle_attributes = {
+  .name = "mutexFdcanHandle"
+};
+/* Definitions for priorityMessageFlag */
+osEventFlagsId_t priorityMessageFlagHandle;
+const osEventFlagsAttr_t priorityMessageFlag_attributes = {
+  .name = "priorityMessageFlag"
+};
+/* Definitions for throttleReceivedFlag */
+osEventFlagsId_t throttleReceivedFlagHandle;
+const osEventFlagsAttr_t throttleReceivedFlag_attributes = {
+  .name = "throttleReceivedFlag"
+};
 /* USER CODE BEGIN PV */
+
+uint8_t throttlePositionData[HCB_THROTTLE_MESSAGE_DLC];
 
 /* USER CODE END PV */
 
@@ -57,9 +129,14 @@ const osThreadAttr_t blinkLED_attributes = {
 void SystemClock_Config(void);
 static void MPU_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_FDCAN1_Init(void);
 void StartBlinkLED(void *argument);
+void HandleHighPriorityMessage(void *argument);
+void HandleLowPriorityMessage(void *argument);
+void HandleThrottle(void *argument);
 
 /* USER CODE BEGIN PFP */
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs);
 
 /* USER CODE END PFP */
 
@@ -100,12 +177,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of mutexFdcanHandle */
+  mutexFdcanHandleHandle = osMutexNew(&mutexFdcanHandle_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -127,9 +208,24 @@ int main(void)
   /* creation of blinkLED */
   blinkLEDHandle = osThreadNew(StartBlinkLED, NULL, &blinkLED_attributes);
 
+  /* creation of highPrtyMessage */
+  highPrtyMessageHandle = osThreadNew(HandleHighPriorityMessage, NULL, &highPrtyMessage_attributes);
+
+  /* creation of lowPrtyMessage */
+  lowPrtyMessageHandle = osThreadNew(HandleLowPriorityMessage, NULL, &lowPrtyMessage_attributes);
+
+  /* creation of handleThrottle */
+  handleThrottleHandle = osThreadNew(HandleThrottle, NULL, &handleThrottle_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* creation of priorityMessageFlag */
+  priorityMessageFlagHandle = osEventFlagsNew(&priorityMessageFlag_attributes);
+
+  /* creation of throttleReceivedFlag */
+  throttleReceivedFlagHandle = osEventFlagsNew(&throttleReceivedFlag_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -144,7 +240,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -167,7 +262,7 @@ void SystemClock_Config(void)
 
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
@@ -182,11 +277,11 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 12;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
-  RCC_OscInitStruct.PLL.PLLFRACN = 0;
+  RCC_OscInitStruct.PLL.PLLFRACN = 4096;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -199,16 +294,90 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief FDCAN1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FDCAN1_Init(void)
+{
+
+  /* USER CODE BEGIN FDCAN1_Init 0 */
+
+  /* USER CODE END FDCAN1_Init 0 */
+
+  /* USER CODE BEGIN FDCAN1_Init 1 */
+
+  /* USER CODE END FDCAN1_Init 1 */
+  hfdcan1.Instance = FDCAN1;
+  hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
+  hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
+  hfdcan1.Init.AutoRetransmission = ENABLE;
+  hfdcan1.Init.TransmitPause = DISABLE;
+  hfdcan1.Init.ProtocolException = DISABLE;
+  hfdcan1.Init.NominalPrescaler = 5;
+  hfdcan1.Init.NominalSyncJumpWidth = 1;
+  hfdcan1.Init.NominalTimeSeg1 = 17;
+  hfdcan1.Init.NominalTimeSeg2 = 2;
+  hfdcan1.Init.DataPrescaler = 1;
+  hfdcan1.Init.DataSyncJumpWidth = 1;
+  hfdcan1.Init.DataTimeSeg1 = 1;
+  hfdcan1.Init.DataTimeSeg2 = 1;
+  hfdcan1.Init.MessageRAMOffset = 0;
+  hfdcan1.Init.StdFiltersNbr = 2;
+  hfdcan1.Init.ExtFiltersNbr = 0;
+  hfdcan1.Init.RxFifo0ElmtsNbr = 16;
+  hfdcan1.Init.RxFifo0ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxFifo1ElmtsNbr = 16;
+  hfdcan1.Init.RxFifo1ElmtSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.RxBuffersNbr = 0;
+  hfdcan1.Init.RxBufferSize = FDCAN_DATA_BYTES_8;
+  hfdcan1.Init.TxEventsNbr = 0;
+  hfdcan1.Init.TxBuffersNbr = 0;
+  hfdcan1.Init.TxFifoQueueElmtsNbr = 4;
+  hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+  hfdcan1.Init.TxElmtSize = FDCAN_DATA_BYTES_8;
+  if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FDCAN1_Init 2 */
+  if (MP7_FDCAN_ConfigureGlobalFilter(&hfdcan1) != HAL_OK) {
+    Error_Handler();
+  }
+
+  // Configure High Priority Filter on RX_FIFO0
+  if (MP7_FDCAN_ConfigureFilter(&hfdcan1, 0x0, 0x3FF, 0, FDCAN_RX_FIFO0) != HAL_OK) {
+    Error_Handler();
+  }
+
+  // Configure Low Priority Filter on RX_FIFO1
+  if (MP7_FDCAN_ConfigureFilter(&hfdcan1, 0x3FF, 0x7FF, 1, FDCAN_RX_FIFO1) != HAL_OK) {
+    Error_Handler();
+  }
+
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+    Error_Handler();
+  }
+
+  if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /* USER CODE END FDCAN1_Init 2 */
+
 }
 
 /**
@@ -227,16 +396,28 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PB0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : LD1_Pin */
+  GPIO_InitStruct.Pin = LD1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(LD1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -244,6 +425,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
+  if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+    osEventFlagsSet(priorityMessageFlagHandle, HCB_HIGH_PRIORITY_MESSAGE_FLAG);
+  }
+}
+
+void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
+  if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+    osEventFlagsSet(priorityMessageFlagHandle, HCB_LOW_PRIORITY_MESSAGE_FLAG);
+  }
+}
 
 /* USER CODE END 4 */
 
@@ -260,13 +453,169 @@ void StartBlinkLED(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-    osDelay(1000);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+    osThreadExit();
   }
 
-  osThreadTerminate(NULL);
-
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_HandleHighPriorityMessage */
+/**
+* @brief Function implementing the highPrtyMessage thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_HandleHighPriorityMessage */
+void HandleHighPriorityMessage(void *argument)
+{
+  /* USER CODE BEGIN HandleHighPriorityMessage */
+  /* Infinite loop */
+  for(;;)
+  {
+    // Wait until High Priority message has been received
+    uint32_t flags = osEventFlagsWait(priorityMessageFlagHandle, HCB_HIGH_PRIORITY_MESSAGE_FLAG, osFlagsWaitAny, osWaitForever);
+
+    // Get message
+    FDCAN_RxHeaderTypeDef RxHeader;
+    uint8_t rxData[8];
+
+    osStatus_t status = osMutexAcquire(mutexFdcanHandleHandle, osWaitForever);
+    if (status != osOK) {
+      Error_Handler();
+    }
+
+    if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &RxHeader, rxData) != HAL_OK) {
+      Error_Handler();
+    }
+
+    osStatus_t status = osMutexRelease(mutexFdcanHandleHandle);
+    if (status != osOK) {
+      Error_Handler();
+    }
+
+    // Pass off to proper function handles
+    uint32_t messageID = RxHeader.Identifier;
+    if (messageID < INVERTER_ID_RANGE_START) { // Error message
+
+    } else if (messageID <= INVERTER_ID_RANGE_STOP) { // Inverter message (offset of 0x14E)
+
+    } else { // Normal message
+      if (messageID == PBB_THROTTLE_POSITION_ID) {
+        // Copy throttle position data to give to the throttle thread
+        memcpy(throttlePositionData, rxData, HCB_THROTTLE_MESSAGE_DLC);
+        osEventFlagsSet(throttleReceivedFlagHandle, HCB_THROTTLE_RECEIVED_FLAG);
+      }
+
+    }
+  }
+  /* USER CODE END HandleHighPriorityMessage */
+}
+
+/* USER CODE BEGIN Header_HandleLowPriorityMessage */
+/**
+* @brief Function implementing the lowPrtyMessage thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_HandleLowPriorityMessage */
+void HandleLowPriorityMessage(void *argument)
+{
+  /* USER CODE BEGIN HandleLowPriorityMessage */
+  /* Infinite loop */
+  for(;;)
+  {
+    // Wait until Low Priority message has been received
+    uint32_t flags = osEventFlagsWait(priorityMessageFlagHandle, HCB_LOW_PRIORITY_MESSAGE_FLAG, osFlagsWaitAny, osWaitForever);
+
+    // Get message
+    FDCAN_RxHeaderTypeDef RxHeader;
+    uint8_t rxData[8];
+
+    osStatus_t acquireStatus = osMutexAcquire(mutexFdcanHandleHandle, osWaitForever);
+    if (acquireStatus != osOK) {
+      Error_Handler();
+    }
+
+    if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO1, &RxHeader, rxData) != HAL_OK) {
+      Error_Handler();
+    }
+
+    osStatus_t releaseStatus = osMutexRelease(mutexFdcanHandleHandle, osWaitForever);
+    if (releaseStatus != osOK) {
+      Error_Handler();
+    }
+
+    uint32_t messageID = RxHeader.Identifier;
+
+    // TODO: Handle low priority messages
+
+  }
+  /* USER CODE END HandleLowPriorityMessage */
+}
+
+/* USER CODE BEGIN Header_HandleThrottle */
+/**
+* @brief Function implementing the handleThrottle thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_HandleThrottle */
+void HandleThrottle(void *argument)
+{
+  /* USER CODE BEGIN HandleThrottle */
+  FDCAN_TxHeaderTypeDef emotorTxHeader;
+  if (MP7_FDCAN_ConfigureTxHeader(&hfdcan1, &emotorTxHeader, HCB_EMOTOR_TORQUE_CMD_ID, 2) != HAL_OK) {
+    Error_Handler();
+  }
+
+  FDCAN_TxHeaderTypeDef iceTxHeader;
+  if (MP7_FDCAN_ConfigureTxHeader(&hfdcan1, &iceTxHeader, HCB_ICE_THROTTLE_PER_ID, 2) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /* Infinite loop */
+  for(;;)
+  {
+    // Do not clear the flag in case there is an error
+    // Timeout if 3 throttle messages have been missed
+    uint32_t flag = osEventFlagsWait(throttleReceivedFlagHandle, HCB_THROTTLE_RECEIVED_FLAG, osFlagsNoClear, HCB_THROTTLE_SEND_TIME * 3);
+    if (flag == osFlagsErrorTimeout) { // timeout occurred
+      Error_Handler();
+    }
+
+    /********************************/
+    // TODO: HYBRID CONTROL ALGORITHM
+    /********************************/
+
+    uint8_t iceThrottleData[HCB_THROTTLE_MESSAGE_DLC];
+    uint8_t emotorThrottleData[2] = {0, 1}; // 0.1 N*m for now
+
+    // TODO: Figure out how to restrict this thread to run within 50 ms
+    osStatus_t acquireStatus = osMutexAcquire(mutexFdcanHandleHandle, osWaitForever);
+    if (acquireStatus != osOK) {
+      Error_Handler();
+    }
+
+    if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &emotorTxHeader, emotorThrottleData) != HAL_OK) {
+      Error_Handler();
+    }
+
+    if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &iceTxHeader, iceThrottleData) != HAL_OK) {
+      Error_Handler();
+    }
+
+
+    osStatus_t releaseStatus = osMutexRelease(mutexFdcanHandleHandle, osWaitForever);
+    if (releaseStatus != osOK) {
+      Error_Handler();
+    }
+
+    // Clear the flag after the messages were properly sent
+    osEventFlagsClear(throttleReceivedFlagHandle, HCB_THROTTLE_RECEIVED_FLAG);
+
+  }
+  /* USER CODE END HandleThrottle */
 }
 
  /* MPU Configuration */
@@ -331,6 +680,9 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+    HAL_Delay(100);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
   }
   /* USER CODE END Error_Handler_Debug */
 }
