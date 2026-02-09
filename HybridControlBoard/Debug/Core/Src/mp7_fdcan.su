@@ -1,0 +1,3 @@
+../Core/Src/mp7_fdcan.c:23:19:MP7_FDCAN_ConfigureGlobalFilter	24	static
+../Core/Src/mp7_fdcan.c:40:19:MP7_FDCAN_ConfigureFilter	56	static
+../Core/Src/mp7_fdcan.c:71:9:MP7_FDCAN_ConfigureTxHeader	24	static
