@@ -40,7 +40,6 @@
 /*
  * CAN DLCs
  */
-#define MP7_CAN_MAX_DLC             8
 #define PBB_THROTTLE_POSITION_DLC   2
 #define HCB_ICE_THROTTLE_PERC_DLC   2
 #define HCB_EMOTOR_TORQUE_CMD_DLC   2
@@ -48,44 +47,17 @@
 /*
  * CAN IDs
  */
-// TODO: Move ranges to mp7_fdcan.h
-// High Priority Range
-#define MP7_HIGH_PRIORITY_MIN_ID  0x000
-#define MP7_HIGH_PRIORITY_MAX_ID  0x3FF
-
-// Error ID Range
-#define MP7_ERROR_MIN_ID  0x000
-#define MP7_ERROR_MAX_ID  0x1E5
-
-// Normal ID Range
-#define MP7_NORMAL_MIN_ID 0x1E6
-#define MP7_NORMAL_MAX_ID 0x3CC
-
 // Hybrid Control Board IDs
 #define HCB_EMOTOR_TORQUE_CMD_ID  0x3FD
 #define HCB_ICE_THROTTLE_PERC_ID  0x1E7
 
-// Inverter IDs (offset of 0x3DD)
-#define INVERTER_ID_MIN_ID  0x3DD
-#define INVERTER_ID_MAX_ID  0x3FF
-
-// Battery Management System (BMS) IDs
-#define MP7_BMS_MIN_ID  0x3CD
-#define MP7_BMS_MAX_ID  0x3DC
-
 // Pedal Box Board IDs
 #define PBB_THROTTLE_POSITION_ID  0x1E7
-
-// Low Priority Range
-#define MP7_LOW_PRIORITY_MIN_ID 0x400
-#define MP7_LOW_PRIORITY_MAX_ID 0x7FF
 
 /*************************/
 // RTOS Event Flags
 /*************************/
 #define HCB_HIGH_PRIORITY_MESSAGE_FLAG  0x00000001
-#define HCB_LOW_PRIORITY_MESSAGE_FLAG   0x00000002
-
 #define HCB_THROTTLE_RECEIVED_FLAG      0x00000001
 
 /*************************/
@@ -119,13 +91,6 @@ const osThreadAttr_t highPrtyMessage_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
-/* Definitions for lowPrtyMessage */
-osThreadId_t lowPrtyMessageHandle;
-const osThreadAttr_t lowPrtyMessage_attributes = {
-  .name = "lowPrtyMessage",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
 /* Definitions for handleThrottle */
 osThreadId_t handleThrottleHandle;
 const osThreadAttr_t handleThrottle_attributes = {
@@ -153,11 +118,6 @@ osEventFlagsId_t highPriorityEventHandle;
 const osEventFlagsAttr_t highPriorityEvent_attributes = {
   .name = "highPriorityEvent"
 };
-/* Definitions for lowPriorityEvent */
-osEventFlagsId_t lowPriorityEventHandle;
-const osEventFlagsAttr_t lowPriorityEvent_attributes = {
-  .name = "lowPriorityEvent"
-};
 /* USER CODE BEGIN PV */
 
 typedef struct {
@@ -176,12 +136,10 @@ static void MX_GPIO_Init(void);
 static void MX_FDCAN1_Init(void);
 void DefaultTask(void *argument);
 void HandleHighPriorityMessage(void *argument);
-void HandleLowPriorityMessage(void *argument);
 void HandleThrottle(void *argument);
 
 /* USER CODE BEGIN PFP */
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs);
-void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs);
 
 /* USER CODE END PFP */
 
@@ -261,9 +219,6 @@ int main(void)
   /* creation of highPrtyMessage */
   highPrtyMessageHandle = osThreadNew(HandleHighPriorityMessage, NULL, &highPrtyMessage_attributes);
 
-  /* creation of lowPrtyMessage */
-  lowPrtyMessageHandle = osThreadNew(HandleLowPriorityMessage, NULL, &lowPrtyMessage_attributes);
-
   /* creation of handleThrottle */
   handleThrottleHandle = osThreadNew(HandleThrottle, NULL, &handleThrottle_attributes);
 
@@ -276,9 +231,6 @@ int main(void)
 
   /* creation of highPriorityEvent */
   highPriorityEventHandle = osEventFlagsNew(&highPriorityEvent_attributes);
-
-  /* creation of lowPriorityEvent */
-  lowPriorityEventHandle = osEventFlagsNew(&lowPriorityEvent_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -416,16 +368,11 @@ static void MX_FDCAN1_Init(void)
     Error_Handler();
   }
 
-  // Configure Low Priority Filter on RX_FIFO1
-  if (MP7_FDCAN_ConfigureFilter(&hfdcan1, MP7_LOW_PRIORITY_MIN_ID, MP7_LOW_PRIORITY_MAX_ID, 1, FDCAN_FILTER_TO_RXFIFO1) != HAL_OK) {
-    Error_Handler();
-  }
-
   if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
     Error_Handler();
   }
 
-  if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO1_NEW_MESSAGE, 0) != HAL_OK) {
+  if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK) {
     Error_Handler();
   }
 
@@ -482,12 +429,6 @@ static void MX_GPIO_Init(void)
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
   if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
     osEventFlagsSet(highPriorityEventHandle, HCB_HIGH_PRIORITY_MESSAGE_FLAG);
-  }
-}
-
-void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs) {
-  if ((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != RESET) {
-    osEventFlagsSet(lowPriorityEventHandle, HCB_LOW_PRIORITY_MESSAGE_FLAG);
   }
 }
 
@@ -555,12 +496,6 @@ void HandleHighPriorityMessage(void *argument)
     if (messageID <= MP7_ERROR_MAX_ID) { // Error message
 
     } else if (messageID <= MP7_NORMAL_MAX_ID) { // Normal message
-
-    } else if (messageID <= MP7_BMS_MAX_ID) {
-
-    } else if (messageID <= INVERTER_ID_MAX_ID) { // Inverter message
-
-    } else { // Normal message
       if (messageID == PBB_THROTTLE_POSITION_ID) {
         if (osMutexAcquire(mutexThrottleDataHandle, osWaitForever) != osOK) {
           Error_Handler();
@@ -576,52 +511,13 @@ void HandleHighPriorityMessage(void *argument)
           Error_Handler();
         }
       }
+    } else if (messageID <= MP7_BMS_MAX_ID) { // Battery Management System message
+
+    } else if (messageID <= INVERTER_ID_MAX_ID) { // Inverter message
 
     }
   }
   /* USER CODE END HandleHighPriorityMessage */
-}
-
-/* USER CODE BEGIN Header_HandleLowPriorityMessage */
-/**
-* @brief Function implementing the lowPrtyMessage thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_HandleLowPriorityMessage */
-void HandleLowPriorityMessage(void *argument)
-{
-  /* USER CODE BEGIN HandleLowPriorityMessage */
-  /* Infinite loop */
-  for(;;)
-  {
-    // Wait until Low Priority message has been received
-    if (osEventFlagsWait(lowPrtyMessageHandle, HCB_LOW_PRIORITY_MESSAGE_FLAG, osFlagsWaitAny, osWaitForever) < 0) {
-      Error_Handler();
-    }
-
-    // Get message
-    FDCAN_RxHeaderTypeDef RxHeader;
-    uint8_t rxData[MP7_CAN_MAX_DLC];
-
-    if (osMutexAcquire(mutexHfdcanHandle, osWaitForever) != osOK) {
-      Error_Handler();
-    }
-
-    if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO1, &RxHeader, rxData) != HAL_OK) {
-      Error_Handler();
-    }
-
-    if (osMutexRelease(mutexHfdcanHandle) != osOK) {
-      Error_Handler();
-    }
-
-    uint32_t messageID = RxHeader.Identifier;
-
-    // TODO: Handle low priority messages
-
-  }
-  /* USER CODE END HandleLowPriorityMessage */
 }
 
 /* USER CODE BEGIN Header_HandleThrottle */
@@ -660,7 +556,6 @@ void HandleThrottle(void *argument)
     uint8_t iceThrottleData[MP7_CAN_MAX_DLC] = {0};
     uint8_t emotorThrottleData[MP7_CAN_MAX_DLC] = {1, 0, 0, 0, 1, 1, 0, 0}; // 0.1 N*m for now
 
-    // TODO: Figure out how to restrict this thread to run within 50 ms
     if (osMutexAcquire(mutexHfdcanHandle, HCB_THROTTLE_SEND_TIME) != osOK) {
       Error_Handler();
     }
@@ -672,7 +567,6 @@ void HandleThrottle(void *argument)
     if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &iceTxHeader, iceThrottleData) != HAL_OK) {
       Error_Handler();
     }
-
 
     if (osMutexRelease(mutexHfdcanHandle) != osOK) {
       Error_Handler();
