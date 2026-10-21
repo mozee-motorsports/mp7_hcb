@@ -31,33 +31,55 @@
 *.out
 *.app
 
-# STM32CubeIDE generated build output
+# STM32CubeIDE / CMake build output
 **/Debug/
 **/Release/
+**/build/
+**/bin/
+**/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+**/CMakeFiles/
+cmake_install.cmake
 
-# STM32CubeIDE generated compiler and analysis output
+# STM32CubeIDE / compiler and analysis output
 *.cyclo
 *.su
 *.elf
 *.map
 *.list
+*.hex
+*.bin
 
-# STM32CubeIDE/CubeMX project metadata
+# STM32CubeMX / STM32CubeIDE temporary and project metadata
+mx.scratch
+**/mx.scratch
 **/.project
 **/.cproject
 **/.mxproject
 **/.settings/
+*.bak
+*.ioc.bak
+
+# STM32CubeMX-generated CMake toolchain and project files
+**/CMakeLists.txt
+**/CMakePresets.json
+**/*.cmake
 
 # STM32CubeMX-generated middleware and device libraries.
 # Regenerate these from the .ioc file using the matching STM32 package.
-mp7_hcb/Drivers/
-mp7_hcb/Common/
+**/Drivers/
+**/Common/
+**/Middlewares/
 
 # STM32CubeMX-generated startup and linker output
-mp7_hcb/CM4/Core/Startup/
-mp7_hcb/CM7/Core/Startup/
-mp7_hcb/CM4/STM32*.ld
-mp7_hcb/CM7/STM32*.ld
+**/Core/Startup/
+**/Startup/
+**/STM32*.ld
+**/stm32*.ld
 
-# Local editor settings
+# Local editor and tool cache
 **/.vscode/
+**/.cache/
+.clangd
+**/.clangd

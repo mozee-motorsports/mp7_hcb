@@ -1,0 +1,60 @@
+# STM32CubeMX / STM32CubeIDE temporary and project metadata
+mx.scratch
+**/mx.scratch
+**/.project
+**/.cproject
+**/.mxproject
+**/.settings/
+*.bak
+*.ioc.bak
+
+# Build directories and outputs
+build/
+**/build/
+bin/
+**/bin/
+Debug/
+**/Debug/
+Release/
+**/Release/
+cmake-build-*/
+**/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+**/CMakeFiles/
+cmake_install.cmake
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+*.su
+*.cyclo
+
+# STM32CubeMX-generated CMake toolchain and project files
+**/CMakeLists.txt
+**/CMakePresets.json
+**/*.cmake
+
+# STM32CubeMX-generated firmware package libraries and templates
+Drivers/
+**/Drivers/
+Common/
+**/Common/
+Middlewares/
+**/Middlewares/
+
+# STM32CubeMX-generated startup and linker scripts
+**/Core/Startup/
+**/Startup/
+**/STM32*.ld
+**/stm32*.ld
+
+# Editor and tool cache
+.cache/
+**/.cache/
+.vscode/
+**/.vscode/
+.clangd
+**/.clangd
+
