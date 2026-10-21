@@ -59,12 +59,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define USER_BTN_Pin GPIO_PIN_13
 #define USER_BTN_GPIO_Port GPIOC
-#define SD_SPI_SCK_Pin GPIO_PIN_5
-#define SD_SPI_SCK_GPIO_Port GPIOA
-#define SD_SPI_MISO_Pin GPIO_PIN_6
-#define SD_SPI_MISO_GPIO_Port GPIOA
-#define SD_SPI_MOSI_Pin GPIO_PIN_7
-#define SD_SPI_MOSI_GPIO_Port GPIOA
 #define CAN1_STBY_Pin GPIO_PIN_5
 #define CAN1_STBY_GPIO_Port GPIOC
 #define LED_USER_GRN_Pin GPIO_PIN_0
@@ -75,8 +69,6 @@ void Error_Handler(void);
 #define CAN2_STBY_GPIO_Port GPIOC
 #define R2D_SPK_Pin GPIO_PIN_9
 #define R2D_SPK_GPIO_Port GPIOC
-#define SD_SPI_CS_Pin GPIO_PIN_6
-#define SD_SPI_CS_GPIO_Port GPIOB
 #define R2D_BTN_OUT_Pin GPIO_PIN_8
 #define R2D_BTN_OUT_GPIO_Port GPIOB
 #define R2D_BTN_IN_Pin GPIO_PIN_9

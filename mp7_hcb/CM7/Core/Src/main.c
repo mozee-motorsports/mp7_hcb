@@ -19,12 +19,17 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fdcan.h"
-#include "spi.h"
+#include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include "mp7_fdcan.h"
+#include "mp7_hcb.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +63,10 @@
 
 /* USER CODE BEGIN PV */
 
+//R2D flag
+static bool readyToDrive = false;
+//Slow watchdog timer tick flag
+volatile uint32_t slow_tx_tick = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -108,7 +117,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -141,17 +149,52 @@ Error_Handler();
   MX_GPIO_Init();
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
-  MX_SPI1_Init();
+  MX_USART3_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
+
+  HCB_Init();
+
+  // start slow watchdog timer
+  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK){
+    Error_Handler();
+  }
+
+  // wait for ready to drive button to be pressed before starting the main loop
+  while(!readyToDrive){
+  }
+  // register the R2D broadcast message for periodic transmission
+  HCB_RegisterR2DPeriodicTransmit();
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_Delay(1000);
-    HAL_GPIO_TogglePin(LED_USER_GRN_GPIO_Port, LED_USER_GRN_Pin);
+    // Check if the slow transmit tick has occurred
+    if(slow_tx_tick > 0U){
+      uint32_t now_ms = HAL_GetTick();
+
+      //disable interrupts while decrementing the slow_tx_tick to avoid race conditions
+      __disable_irq();
+      //decrement the slow_tx_tick
+      slow_tx_tick--;
+      __enable_irq();
+
+      //Process periodic TX
+      MP7_FDCAN_ProcessPeriodicMessages(&hfdcan1, now_ms);
+
+      //Process RX watchdogs
+      MP7_FDCAN_CheckWatchdogs(now_ms);
+    }
+
+    // Process all pending received CAN messages
+    MP7_FDCAN_ProcessRxMessages(&hfdcan1,
+                                FDCAN_RX_FIFO0,
+                            HCB_HandleCANRxMessage,
+                                HAL_GetTick());
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -209,7 +252,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV1;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 
@@ -221,6 +264,19 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+//tim2 watchdog callback
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+  if (htim->Instance == TIM2) {
+    slow_tx_tick++;
+  }
+}
+
+//EXTI callback for the r2d button
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+  if(GPIO_Pin == R2D_BTN_IN_Pin){
+    readyToDrive = true;
+  }
+}
 /* USER CODE END 4 */
 
  /* MPU Configuration */
