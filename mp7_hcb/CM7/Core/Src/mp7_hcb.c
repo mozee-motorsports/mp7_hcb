@@ -13,6 +13,8 @@
 #include "mp7_hcb.h"
 #include "fdcan.h"
 #include "main.h"
+#include "hcb_can_config.h"
+#include "sevcon_rx.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -26,6 +28,45 @@ static eCAN_Error handleHybridControlBoardMessage(const sCAN_Message *message);
 static eCAN_Error handleThrottleControlBoardMessage(const sCAN_Message *message);
 static eCAN_Error handlePedalBoxMessage(const sCAN_Message *message);
 static eCAN_Error handleSevconMessage(const sCAN_Message *message);
+
+static SevconPdoLayouts sevcon_layouts;
+static SevconPdoFeedback sevcon_feedback;
+
+FDCAN_HandleTypeDef *HCB_GetVehicleCan(void) {
+#if HCB_VEHICLE_FDCAN_INDEX == 1
+  return &hfdcan1;
+#else
+  return &hfdcan2;
+#endif
+}
+
+static FDCAN_HandleTypeDef *sevconCan(void) {
+#if HCB_SEVCON_FDCAN_INDEX == 1
+  return &hfdcan1;
+#elif HCB_SEVCON_FDCAN_INDEX == 2
+  return &hfdcan2;
+#else
+  return NULL; // Wiring has not been identified yet.
+#endif
+}
+
+const SevconPdoFeedback *HCB_GetSevconFeedback(void) {
+  return &sevcon_feedback;
+}
+
+eCAN_Error HCB_ProcessCANRx(uint32_t now_ms) {
+  eCAN_Error status = MP7_FDCAN_ProcessRxMessages(HCB_GetVehicleCan(),
+                                                FDCAN_RX_FIFO0,
+                                                HCB_HandleCANRxMessage,
+                                                now_ms);
+  FDCAN_HandleTypeDef *bus = sevconCan();
+  if (bus != NULL && SevconRx_Process(bus, FDCAN_RX_FIFO0, now_ms,
+                                     &sevcon_layouts, &sevcon_feedback) != HAL_OK) {
+    MP7_HandleCANError(CAN_FDCAN_RX_FAILURE);
+    status = CAN_FDCAN_RX_FAILURE;
+  }
+  return status;
+}
 
 //************************************************************************
 // Initialization
@@ -48,6 +89,12 @@ void FDCAN_Init(void){
   * @retval None
   */
 void HCB_Init(void){
+  SevconPdo_ClearFeedback(&sevcon_feedback);
+  if (SevconPdo_DefaultLayouts(&sevcon_layouts) != PDO_OK ||
+      SevconPdo_ValidateLayouts(&sevcon_layouts) != PDO_OK) {
+    Error_Handler();
+    return;
+  }
   FDCAN_Init();
 }
 
@@ -117,6 +164,7 @@ static eCAN_Error handlePedalBoxMessage(const sCAN_Message *message) {
 }
 
 static eCAN_Error handleSevconMessage(const sCAN_Message *message) {
+  // Legacy MP7 module tag only. Actual inverter TPDOs use SevconRx_Process.
   // ignore SEVCON messages for now
   (void)message; // Suppress unused variable warning
   return CAN_OK;
