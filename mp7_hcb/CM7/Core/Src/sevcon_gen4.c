@@ -47,9 +47,9 @@ Sevcon_Status_t Sevcon_Init(Sevcon_Handle_t *handle,
     */
 
     // setup the canfd peripheral
-    if(MP7_FDCAN_InitAndStart(hfdcan) != HAL_OK){
-        MP7_FDCAN_HandleError(HAL_ERROR);
-    }
+//    if(MP7_FDCAN_InitAndStart(hfdcan) != HAL_OK){
+//        MP7_FDCAN_HandleError(HAL_ERROR);
+//    }
 
     // Initialize the Sevcon handle with provided parameters
     handle->hfdcan = hfdcan;

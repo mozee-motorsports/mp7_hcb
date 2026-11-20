@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <CO_app_STM32.h>
 #include "main.h"
 #include "fdcan.h"
 #include "tim.h"
@@ -28,8 +29,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include "mp7_fdcan.h"
 #include "mp7_hcb.h"
+
+#include "301/CO_NMT_Heartbeat.h"
+#include "CANopen.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,6 +78,17 @@ volatile uint32_t slow_tx_tick = 0U;
 void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
+
+void MP7_printf(const char *fmt, ...) {
+  static char buffer[256];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+
+  int len = strlen(buffer);
+  HAL_UART_Transmit(&huart3, (uint8_t *)buffer, len, -1);
+}
 
 /* USER CODE END PFP */
 
@@ -155,11 +171,23 @@ Error_Handler();
 
 
   HCB_Init();
+  MP7_printf("\r\nInititialization");
 
   // start slow watchdog timer
   if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK){
     Error_Handler();
   }
+
+  CANopenNodeSTM32 canopenNodeSTM32;
+  canopenNodeSTM32.CANHandle = &hfdcan1;
+  canopenNodeSTM32.HWInitFunction = MX_FDCAN1_Init;
+  canopenNodeSTM32.timerHandle = &htim2;
+  canopenNodeSTM32.desiredNodeID = 2;
+  canopenNodeSTM32.baudrate = 1000;
+  canopen_app_init(&canopenNodeSTM32);
+
+  // Setup NMT
+  CO_NMT_t nmtConfig;
 
   // wait for ready to drive button to be pressed before starting the main loop
   while(!readyToDrive){
