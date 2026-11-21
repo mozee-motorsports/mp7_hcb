@@ -1,19 +1,25 @@
 #ifndef SEVCON_MESSAGES_H
 #define SEVCON_MESSAGES_H
 
-/* Message builders only. Nothing in this library transmits CAN or enables a drive.
- * Object support, units and PDO mappings must be checked against the actual EDS/DCF.
- * This is independent of the unfinished Sevcon_* API in the original firmware.
- */
+// Message builders only. Nothing in this library transmits CAN or enables a drive.
 #include <stdbool.h>
 #include <stdint.h>
-#include "can_frame.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+
+// CAN FRAME DEFINITION!! GENERIC
+typedef struct {
+    uint16_t id;
+    uint8_t length;
+    uint8_t data[8];
+} CanFrame;
+#endif
+
 typedef CanFrame SevconCanFrame; /* Backward-compatible name for existing helpers. */
+
 
 typedef enum {
     SEVCON_MSG_OK = 0,
@@ -23,22 +29,6 @@ typedef enum {
     SEVCON_MSG_UNSUPPORTED
 } SevconMessageResult;
 
-typedef enum {
-    SEVCON_NMT_START = 0x01,
-    SEVCON_NMT_STOP = 0x02,
-    SEVCON_NMT_PREOP = 0x80,
-    SEVCON_NMT_RESET = 0x81,
-    SEVCON_NMT_RESET_COMMS = 0x82
-} SevconNmtCommand;
-
-typedef enum {
-    SEVCON_CONTROL_DISABLE_VOLTAGE = 0x0000,
-    SEVCON_CONTROL_QUICK_STOP = 0x0002,
-    SEVCON_CONTROL_SHUTDOWN = 0x0006,
-    SEVCON_CONTROL_SWITCH_ON = 0x0007,
-    SEVCON_CONTROL_ENABLE = 0x000F,
-    SEVCON_CONTROL_FAULT_RESET = 0x0080
-} SevconControlword;
 
 typedef enum {
     SEVCON_DRIVE_NOT_READY,
@@ -52,10 +42,6 @@ typedef enum {
     SEVCON_DRIVE_UNKNOWN
 } SevconDriveState;
 
-/* Caller attests that the EXACT byte layout documented for that function is
- * configured in the controller. This flag does not inspect or change the DCF.
- * Separate records are required for torque and velocity PDOs.
- */
 typedef struct {
     uint16_t cob_id;
     bool confirmed;
@@ -119,25 +105,6 @@ SevconMessageResult SevconMsg_MaxSpeed(uint8_t node, uint32_t speed_raw,
 SevconMessageResult SevconMsg_HeartbeatPeriod(uint8_t node, uint16_t period_ms,
                                             SevconCanFrame *out);
 
-/* Candidate layouts from the ORIGINAL HEADER, not universal Sevcon defaults:
- * torque:   controlword u16 | target torque i16 | maximum speed u32
- * velocity: controlword u16 | target velocity i32 | two zero padding bytes
- * All fields are little endian. Raw units are deliberately not called Nm/rpm.
- * There are no limit clamps, watchdogs or state checks in these codecs.
- */
-SevconMessageResult SevconMsg_Torque(const SevconPdoMapping *mapping,
-                                   SevconControlword control, int16_t torque_raw,
-                                   uint32_t max_speed_raw, SevconCanFrame *out);
-SevconMessageResult SevconMsg_Velocity(const SevconPdoMapping *mapping,
-                                     SevconControlword control, int32_t speed_raw,
-                                     SevconCanFrame *out);
-
-SevconDriveState SevconMsg_DriveState(uint16_t statusword);
-/* Heartbeat/EMCY/default SDO channel decoded without any PDO assumptions.
- * Pass NULL for mapping until feedback layout is verified. A malformed,
- * ignored or unsupported message leaves out unchanged. Heartbeat node guarding
- * toggle-bit frames and segmented/block SDO transfers are not supported.
- */
 SevconMessageResult SevconMsg_Decode(uint8_t node, const SevconCanFrame *frame,
                                    const SevconFeedbackMapping *mapping,
                                    SevconRxMessage *out);

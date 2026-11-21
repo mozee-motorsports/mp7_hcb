@@ -191,8 +191,6 @@ Error_Handler();
 
   // wait for ready to drive button to be pressed before starting the main loop
   while(!readyToDrive){
-    // Receive telemetry while waiting; this does not enable the motor or transmit.
-    HCB_ProcessCANRx(HAL_GetTick());
   }
   // register the R2D broadcast message for periodic transmission
   HCB_RegisterR2DPeriodicTransmit();
@@ -214,15 +212,17 @@ Error_Handler();
       __enable_irq();
 
       //Process periodic TX
-      MP7_FDCAN_ProcessPeriodicMessages(HCB_GetVehicleCan(), now_ms);
+      MP7_FDCAN_ProcessPeriodicMessages(&hfdcan1, now_ms);
 
       //Process RX watchdogs
       MP7_FDCAN_CheckWatchdogs(now_ms);
     }
 
     // Process all pending received CAN messages
-    // Vehicle frames use MP7 routing; SEVCON frames retain their full CAN ID.
-    HCB_ProcessCANRx(HAL_GetTick());
+    MP7_FDCAN_ProcessRxMessages(&hfdcan1,
+                                FDCAN_RX_FIFO0,
+                            HCB_HandleCANRxMessage,
+                                HAL_GetTick());
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
