@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include <CO_app_STM32.h>
@@ -49,7 +49,7 @@
 /*                             demonstration code based on hardware semaphore */
 /* This define is present in both CM7/CM4 projects                            */
 /* To comment when developping/debugging on a single core                     */
-//#define DUAL_CORE_BOOT_SYNC_SEQUENCE
+// #define DUAL_CORE_BOOT_SYNC_SEQUENCE
 
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
 #ifndef HSEM_ID_0
@@ -68,9 +68,9 @@
 
 /* USER CODE BEGIN PV */
 
-//R2D flag
+// R2D flag
 static bool readyToDrive = false;
-//Slow watchdog timer tick flag
+// Slow watchdog timer tick flag
 volatile uint32_t slow_tx_tick = 0U;
 /* USER CODE END PV */
 
@@ -79,7 +79,8 @@ void SystemClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
-void MP7_printf(const char *fmt, ...) {
+void MP7_printf(const char *fmt, ...)
+{
   static char buffer[256];
   va_list args;
   va_start(args, fmt);
@@ -98,9 +99,9 @@ void MP7_printf(const char *fmt, ...) {
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -111,7 +112,7 @@ int main(void)
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
   int32_t timeout;
 #endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_0 */
+       /* USER CODE END Boot_Mode_Sequence_0 */
 
   /* MPU Configuration--------------------------------------------------------*/
   MPU_Config();
@@ -120,13 +121,14 @@ int main(void)
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
   /* Wait until CPU2 boots and enters in stop mode or timeout*/
   timeout = 0xFFFF;
-  while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) && (timeout-- > 0));
-  if ( timeout < 0 )
+  while ((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) && (timeout-- > 0))
+    ;
+  if (timeout < 0)
   {
-  Error_Handler();
+    Error_Handler();
   }
 #endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_1 */
+       /* USER CODE END Boot_Mode_Sequence_1 */
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -139,23 +141,24 @@ int main(void)
   SystemClock_Config();
 /* USER CODE BEGIN Boot_Mode_Sequence_2 */
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-/* When system initialization is finished, Cortex-M7 will release Cortex-M4 by means of
-HSEM notification */
-/*HW semaphore Clock enable*/
-__HAL_RCC_HSEM_CLK_ENABLE();
-/*Take HSEM */
-HAL_HSEM_FastTake(HSEM_ID_0);
-/*Release HSEM in order to notify the CPU2(CM4)*/
-HAL_HSEM_Release(HSEM_ID_0,0);
-/* wait until CPU2 wakes up from stop mode */
-timeout = 0xFFFF;
-while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) == RESET) && (timeout-- > 0));
-if ( timeout < 0 )
-{
-Error_Handler();
-}
+  /* When system initialization is finished, Cortex-M7 will release Cortex-M4 by means of
+  HSEM notification */
+  /*HW semaphore Clock enable*/
+  __HAL_RCC_HSEM_CLK_ENABLE();
+  /*Take HSEM */
+  HAL_HSEM_FastTake(HSEM_ID_0);
+  /*Release HSEM in order to notify the CPU2(CM4)*/
+  HAL_HSEM_Release(HSEM_ID_0, 0);
+  /* wait until CPU2 wakes up from stop mode */
+  timeout = 0xFFFF;
+  while ((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) == RESET) && (timeout-- > 0))
+    ;
+  if (timeout < 0)
+  {
+    Error_Handler();
+  }
 #endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
-/* USER CODE END Boot_Mode_Sequence_2 */
+       /* USER CODE END Boot_Mode_Sequence_2 */
 
   /* USER CODE BEGIN SysInit */
 
@@ -169,12 +172,12 @@ Error_Handler();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-
   HCB_Init();
   MP7_printf("\r\nInititialization");
 
   // start slow watchdog timer
-  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK){
+  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
+  {
     Error_Handler();
   }
 
@@ -186,42 +189,44 @@ Error_Handler();
   canopenNodeSTM32.baudrate = 1000;
   canopen_app_init(&canopenNodeSTM32);
 
-  // Setup NMT
-  CO_NMT_t nmtConfig;
-
   // wait for ready to drive button to be pressed before starting the main loop
-  while(!readyToDrive){
+  while (!readyToDrive)
+  {
+    canopen_app_process();
   }
   // register the R2D broadcast message for periodic transmission
   HCB_RegisterR2DPeriodicTransmit();
-  
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    canopen_app_process();
+
     // Check if the slow transmit tick has occurred
-    if(slow_tx_tick > 0U){
+    if (slow_tx_tick > 0U)
+    {
       uint32_t now_ms = HAL_GetTick();
 
-      //disable interrupts while decrementing the slow_tx_tick to avoid race conditions
+      // disable interrupts while decrementing the slow_tx_tick to avoid race conditions
       __disable_irq();
-      //decrement the slow_tx_tick
+      // decrement the slow_tx_tick
       slow_tx_tick--;
       __enable_irq();
 
-      //Process periodic TX
+      // Process periodic TX
       MP7_FDCAN_ProcessPeriodicMessages(&hfdcan1, now_ms);
 
-      //Process RX watchdogs
+      // Process RX watchdogs
       MP7_FDCAN_CheckWatchdogs(now_ms);
     }
 
     // Process all pending received CAN messages
     MP7_FDCAN_ProcessRxMessages(&hfdcan1,
                                 FDCAN_RX_FIFO0,
-                            HCB_HandleCANRxMessage,
+                                HCB_HandleCANRxMessage,
                                 HAL_GetTick());
     /* USER CODE END WHILE */
 
@@ -231,28 +236,30 @@ Error_Handler();
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Supply configuration update enable
-  */
+   */
   HAL_PWREx_ConfigSupply(PWR_DIRECT_SMPS_SUPPLY);
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
-  while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
+  while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY))
+  {
+  }
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+   * in the RCC_OscInitTypeDef structure.
+   */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -272,10 +279,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
-                              |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2 | RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
@@ -292,22 +297,26 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-//tim2 watchdog callback
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-  if (htim->Instance == TIM2) {
+// tim2 watchdog callback
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2)
+  {
     slow_tx_tick++;
   }
 }
 
-//EXTI callback for the r2d button
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-  if(GPIO_Pin == R2D_BTN_IN_Pin){
+// EXTI callback for the r2d button
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == R2D_BTN_IN_Pin)
+  {
     readyToDrive = true;
   }
 }
 /* USER CODE END 4 */
 
- /* MPU Configuration */
+/* MPU Configuration */
 
 void MPU_Config(void)
 {
@@ -317,7 +326,7 @@ void MPU_Config(void)
   HAL_MPU_Disable();
 
   /** Initializes and configures the Region and the memory to be protected
-  */
+   */
   MPU_InitStruct.Enable = MPU_REGION_ENABLE;
   MPU_InitStruct.Number = MPU_REGION_NUMBER0;
   MPU_InitStruct.BaseAddress = 0x0;
@@ -333,13 +342,12 @@ void MPU_Config(void)
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
   /* Enables the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-
 }
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -352,12 +360,12 @@ void Error_Handler(void)
 }
 #ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
