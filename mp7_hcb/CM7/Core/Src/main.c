@@ -45,6 +45,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define CANOPEN_HCB_INIT_OK 0
+
 /* DUAL_CORE_BOOT_SYNC_SEQUENCE: Define for dual core boot synchronization    */
 /*                             demonstration code based on hardware semaphore */
 /* This define is present in both CM7/CM4 projects                            */
@@ -187,11 +189,23 @@ int main(void)
   canopenNodeSTM32.timerHandle = &htim2;
   canopenNodeSTM32.desiredNodeID = 2;
   canopenNodeSTM32.baudrate = 1000;
-  canopen_app_init(&canopenNodeSTM32);
+  if (canopen_app_init(&canopenNodeSTM32) != CANOPEN_HCB_INIT_OK)
+  {
+    Error_Handler();
+  }
+
+  // SEVCON init
+  // Configure the Sevcon safety limits and put them into a Sevcon_SafetyLimits_t structure
+  Sevcon_SafetyLimits_t limits; // edit this structure with your desired safety limits
+  if (Sevcon_Init(&sevcon, canopenNodeSTM32.canOpenStack, sevcon_node_id, &limits) != SEVCON_OK)
+  {
+    Error_Handler();
+  }
 
   // wait for ready to drive button to be pressed before starting the main loop
   while (!readyToDrive)
   {
+    // process the
     canopen_app_process();
   }
   // register the R2D broadcast message for periodic transmission
