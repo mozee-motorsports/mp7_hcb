@@ -242,6 +242,20 @@ extern "C"
      */
     Sevcon_Status_t Sevcon_Deinit(Sevcon_Handle_t *handle);
 
+    // Taken from line 110 of co_sdoclient.h, sends SDO's easily
+    /**
+     * @brief Write one 1–4 byte value to a remote CANopen object and wait for completion.
+     * @param[in,out] SDO_C    Initialized SDO client available for this transfer.
+     * @param[in] nodeId       Remote node ID, from 1 through 127.
+     * @param[in] index        Object dictionary index.
+     * @param[in] subIndex     Object dictionary subindex.
+     * @param[in] data         Value encoded in CANopen wire byte order.
+     * @param[in] dataSize     Number of value bytes required by the object.
+     * @return CO_SDO_AB_NONE on confirmed completion, or an abort code on failure.
+     */
+    CO_SDO_abortCode_t
+    write_SDO(CO_SDOclient_t *SDO_C, uint8_t nodeId, uint16_t index,
+              uint8_t subIndex, uint8_t *data, size_t dataSize);
     /**
      * @brief Selects the CiA 402 Mode of Operation (Torque vs Velocity).
      *
@@ -338,25 +352,6 @@ extern "C"
     Sevcon_Status_t Sevcon_SetTorqueWithSpeedLimit(Sevcon_Handle_t *handle,
                                                    int16_t torque_0p1pct,
                                                    uint32_t speed_rpm);
-
-    /**
-     * @brief Sets the Target Motor Speed in RPM while in Profile Velocity Mode (Object 0x60FF / 0x6042).
-     *
-     * @param[in,out] handle        Pointer to Sevcon instance handle.
-     * @param[in]     velocity_rpm  Target motor speed in signed RPM (positive = forward, negative = reverse).
-     * @return Sevcon_Status_t SEVCON_OK on success.
-     *
-     * @details
-     * CAN Message Sent (RPDO or SDO to Object 0x60FF or 0x6042):
-     * - If using Target Velocity (Object 0x60FF:00, int32):
-     *   - COB-ID:  0x300 + NodeID (RPDO2) or 0x600 + NodeID (SDO)
-     *   - DLC:     8
-     *   - Bytes 0-1: Controlword (0x6040, uint16)
-     *   - Bytes 2-5: Target Velocity (0x60FF, int32, Little-Endian, signed RPM)
-     *   - Bytes 6-7: Padding / Acceleration limit
-     */
-    Sevcon_Status_t Sevcon_SetVelocityDemand(Sevcon_Handle_t *handle,
-                                             int32_t velocity_rpm);
 
     /* ========================================================================== */
     /* Safety & Supervisory Functions                                             */
